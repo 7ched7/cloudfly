@@ -23,18 +23,18 @@ export default function FilesAndFolders({
         let newSelectedItems = { ...selectedItems };
     
         if (type === "file") {
-            const existingFile = files.find((f) => f._id === item._id);
+            const existingFile = files.find((f) => f.id === item.id);
             if (existingFile) {
-                newSelectedItems.files = files.filter((f) => f._id !== item._id);
+                newSelectedItems.files = files.filter((f) => f.id !== item.id);
                 newSelectedItems.count -= 1;
             } else {
                 newSelectedItems.files = [...files, item as FileProps];
                 newSelectedItems.count += 1;
             }
         } else if (type === "folder") {
-            const existingFolder = folders.find((f) => f._id === item._id);
+            const existingFolder = folders.find((f) => f.id === item.id);
             if (existingFolder) {
-                newSelectedItems.folders = folders.filter((f) => f._id !== item._id);
+                newSelectedItems.folders = folders.filter((f) => f.id !== item.id);
                 newSelectedItems.count -= 1;
             } else {
                 newSelectedItems.folders = [...folders, item as FolderProps];
@@ -70,11 +70,11 @@ export default function FilesAndFolders({
                         {
                             data.folders.map((folder: FolderProps) => (
                                 <Folder 
-                                    key={folder._id}
+                                    key={folder.id}
                                     folder={folder}
                                     handleChangeDirectory={handleChangeDirectory}
                                     handleSelectItem={handleSelectItem}
-                                    isSelected={selectedItems.folders.some((f) => f._id === folder._id)}
+                                    isSelected={selectedItems.folders.some((f) => f.id === folder.id)}
                                 />
                             ))
                         }
@@ -88,10 +88,10 @@ export default function FilesAndFolders({
                         {
                             data.files.map((file: FileProps) => (
                                 <File 
-                                    key={file._id} 
+                                    key={file.id} 
                                     file={file}
                                     handleSelectItem={handleSelectItem}
-                                    isSelected={selectedItems.files.some((f) => f._id === file._id)}
+                                    isSelected={selectedItems.files.some((f) => f.id === file.id)}
                                 />
                             ))
                         }

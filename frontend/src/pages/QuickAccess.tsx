@@ -16,7 +16,7 @@ import SelectionRectangle from "@/components/global/SelectionRectangle";
 
 export default function QuickAccess() {
     const [parent, setParent] = useState<string>("root");
-    const [folderStack, setFolderStack] = useState<{_id: string, name: string}[]>([{ _id: parent, name: "Quick Access"}]);
+    const [folderStack, setFolderStack] = useState<{id: string, name: string}[]>([{ id: parent, name: "Quick Access"}]);
     const [selectedItems, setSelectedItems] = useState<SelectedItemsProps>({ files: [], folders: [], count: 0 });
     const [isSelecting, setIsSelecting] = useState(false);
     const [query, setQuery] = useState("");
@@ -46,16 +46,16 @@ export default function QuickAccess() {
 
     // handle change directory 
     const handleChangeDirectory = (folder: FolderProps) => {
-        setFolderStack([...folderStack, { _id: folder._id, name: folder.name }]);
-        setParent(folder._id);
+        setFolderStack([...folderStack, { id: folder.id, name: folder.name }]);
+        setParent(folder.id);
         setSelectedItems({ files: [], folders: [], count: 0 });
     }
 
     // handle go back
     const handleGoBack = () => {
-        const currentFolderId = folderStack[folderStack.length - 1]._id;
-        const prevFolderId = folderStack[folderStack.length - 2]._id || 'root';
-        setFolderStack((stack) => stack.filter((s) => s._id !== currentFolderId));
+        const currentFolderId = folderStack[folderStack.length - 1].id;
+        const prevFolderId = folderStack[folderStack.length - 2].id || 'root';
+        setFolderStack((stack) => stack.filter((s) => s.id !== currentFolderId));
         setParent(prevFolderId);
     }    
 
@@ -104,7 +104,7 @@ export default function QuickAccess() {
                             {
                                 data.lastUploadedFiles.map((file: FileProps) => (
                                     <File 
-                                        key={file._id} 
+                                        key={file.id} 
                                         file={file}
                                     />
                                 ))
@@ -121,7 +121,7 @@ export default function QuickAccess() {
                             {
                                 data.lastUpdatedFiles.map((file: FileProps) => (
                                     <File 
-                                        key={file._id} 
+                                        key={file.id} 
                                         file={file}
                                     />
                                 ))

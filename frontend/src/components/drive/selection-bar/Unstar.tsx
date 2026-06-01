@@ -27,8 +27,8 @@ export default function Unstar({ items }: { items: SelectedItemsProps }) {
 
     // handle unstar
     const handleUnstar = () => {
-        const fileIdArr = items.files.map((item) => ({ _id: item._id })); 
-        const folderIdArr = items.folders.map((item) => ({ _id: item._id })); 
+        const fileIdArr = items.files.map((item) => ({ id: item.id })); 
+        const folderIdArr = items.folders.map((item) => ({ id: item.id })); 
         mutate({ files: fileIdArr, folders: folderIdArr });
     }
 

@@ -14,7 +14,7 @@ import { DrivePageLoading } from "@/components/global/Loading";
 import SelectionRectangle from "@/components/global/SelectionRectangle";
 
 export interface FileProps {
-    _id: string; 
+    id: string; 
     parent: string; 
     originalName: string; 
     mimeType: string;
@@ -25,7 +25,7 @@ export interface FileProps {
 }
 
 export interface FolderProps {
-    _id: string; 
+    id: string; 
     parent: string; 
     name: string; 
     isStarred: boolean;
@@ -41,7 +41,7 @@ export interface SelectedItemsProps {
 export default function Drive() {
     const [parent, setParent] = useState<string>("root");
     const [fileNames, setFileNames] = useState<string[]>([]);
-    const [folderStack, setFolderStack] = useState<{_id: string, name: string}[]>([{ _id: parent, name: "My Drive"}]);
+    const [folderStack, setFolderStack] = useState<{id: string, name: string}[]>([{ id: parent, name: "My Drive"}]);
     const [selectedItems, setSelectedItems] = useState<SelectedItemsProps>({ files: [], folders: [], count: 0 });
     const [isSelecting, setIsSelecting] = useState(false);
     const [droppedFiles, setDroppedFiles] = useState<FileList | null>(null);
@@ -63,16 +63,16 @@ export default function Drive() {
 
     // handle change directory 
     const handleChangeDirectory = (folder: FolderProps) => {
-        setFolderStack([...folderStack, { _id: folder._id, name: folder.name }]);
-        setParent(folder._id);
+        setFolderStack([...folderStack, { id: folder.id, name: folder.name }]);
+        setParent(folder.id);
         setSelectedItems({ files: [], folders: [], count: 0 });
     }
 
     // handle go back
     const handleGoBack = () => {
-        const currentFolderId = folderStack[folderStack.length - 1]._id;
-        const prevFolderId = folderStack[folderStack.length - 2]._id || 'root';
-        setFolderStack((stack) => stack.filter((s) => s._id !== currentFolderId));
+        const currentFolderId = folderStack[folderStack.length - 1].id;
+        const prevFolderId = folderStack[folderStack.length - 2].id || 'root';
+        setFolderStack((stack) => stack.filter((s) => s.id !== currentFolderId));
         setParent(prevFolderId);
     }
 

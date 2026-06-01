@@ -40,7 +40,7 @@ export default function Move({ items, parentFolder, setParentFolder }: { items: 
     
     useEffect(() => {
         if (data) {
-            const newFolders = data?.folders?.filter((item1: FolderProps ) => !items.folders.some(item2 => item1._id === item2._id)) || [];
+            const newFolders = data?.folders?.filter((item1: FolderProps ) => !items.folders.some(item2 => item1.id === item2.id)) || [];
             setSelectedFolderId("");            
             setFolders(newFolders);
         }
@@ -72,8 +72,8 @@ export default function Move({ items, parentFolder, setParentFolder }: { items: 
     
     // handle move
     const handleMove = () => {
-        const fileIdArr = items.files.map((item) => ({ _id: item._id })); 
-        const folderIdArr = items.folders.map((item) => ({ _id: item._id })); 
+        const fileIdArr = items.files.map((item) => ({ id: item.id })); 
+        const folderIdArr = items.folders.map((item) => ({ id: item.id })); 
         mutate({ data: { files: fileIdArr, folders: folderIdArr }, parent: selectedFolderId });
     }    
     
@@ -132,14 +132,14 @@ export default function Move({ items, parentFolder, setParentFolder }: { items: 
                                 <div className="grid grid-cols-2 gap-2">
                                     {
                                         folders?.map((folder: FolderProps) => (
-                                            <div key={folder._id} onClick={() => handleSelect(folder._id)} onDoubleClick={() => handleOpenFolder(folder._id)} 
+                                            <div key={folder.id} onClick={() => handleSelect(folder.id)} onDoubleClick={() => handleOpenFolder(folder.id)} 
                                             className={`flex items-center justify-between text-xs rounded-md 
-                                            ${selectedFolderId === folder._id ? "bg-bluedefault/25" : "dark:bg-white/5 dark:hover:bg-white/10 bg-blackdefault/5 hover:bg-blackdefault/10"}`}>
+                                            ${selectedFolderId === folder.id ? "bg-bluedefault/25" : "dark:bg-white/5 dark:hover:bg-white/10 bg-blackdefault/5 hover:bg-blackdefault/10"}`}>
                                                 <div className="flex items-center">
                                                     <img src={folderIcon} className="p-2 w-10 select-none pointer-events-none" />
                                                     <p className="select-none">{folder.name}</p>
                                                 </div>
-                                                <CustomButton onClick={() => handleOpenFolder(folder._id)} className="bg-transparent hover:bg-transparent p-0 h-8 w-8" type="button" variant="secondary" effect={false}>
+                                                <CustomButton onClick={() => handleOpenFolder(folder.id)} className="bg-transparent hover:bg-transparent p-0 h-8 w-8" type="button" variant="secondary" effect={false}>
                                                     <ChevronRight className="scale-75" />
                                                 </CustomButton>
                                             </div>

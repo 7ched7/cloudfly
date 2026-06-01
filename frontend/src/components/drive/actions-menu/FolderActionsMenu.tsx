@@ -18,7 +18,7 @@ import Restore from "./Restore";
 import Delete from "./Delete";
 import { CustomButton } from "@/components/global/FormElements";
 
-export default function FolderActionsMenu({ _id, parent, isStarred, isDeleted }: FolderProps) {
+export default function FolderActionsMenu({ id, parent, isStarred, isDeleted }: FolderProps) {
     const [isRenameDialogOpen, setRenameDialogOpen] = useState(false);
     const [isMoveDialogOpen, setMoveDialogOpen] = useState(false);
     const [isTrashDialogOpen, setTrashDialogOpen] = useState(false);
@@ -52,14 +52,14 @@ export default function FolderActionsMenu({ _id, parent, isStarred, isDeleted }:
                             isStarred ?
                             <>
                             <MenubarItem className="p-0">
-                                <Unstar _id={_id} type="folder" />
+                                <Unstar id={id} type="folder" />
                             </MenubarItem>
                             <MenubarSeparator />
                             </>
                             :
                             <>
                             <MenubarItem className="p-0">
-                                <Star _id={_id} type="folder" />
+                                <Star id={id} type="folder" />
                             </MenubarItem>
                             <MenubarSeparator />
                             </>
@@ -90,7 +90,7 @@ export default function FolderActionsMenu({ _id, parent, isStarred, isDeleted }:
                             :
                             <>
                             <MenubarItem className="p-0">
-                                <Restore _id={_id} type="folder" />
+                                <Restore id={id} type="folder" />
                             </MenubarItem>
                             <MenubarSeparator />
                             </>
@@ -112,16 +112,16 @@ export default function FolderActionsMenu({ _id, parent, isStarred, isDeleted }:
             </Menubar>
 
             {/* rename dialog */}
-            <Rename _id={_id} parent={parent} type="folder" isRenameDialogOpen={isRenameDialogOpen} setRenameDialogOpen={setRenameDialogOpen} />
+            <Rename id={id} parent={parent} type="folder" isRenameDialogOpen={isRenameDialogOpen} setRenameDialogOpen={setRenameDialogOpen} />
 
             {/* move dialog */}
-            <Move _id={_id} parent={parent} type="folder" isMoveDialogOpen={isMoveDialogOpen} setMoveDialogOpen={setMoveDialogOpen} />
+            <Move id={id} parent={parent} type="folder" isMoveDialogOpen={isMoveDialogOpen} setMoveDialogOpen={setMoveDialogOpen} />
 
             {/* trash dialog */}
-            <MovetoTrash _id={_id} type="folder" isTrashDialogOpen={isTrashDialogOpen} setTrashDialogOpen={setTrashDialogOpen} />
+            <MovetoTrash id={id} type="folder" isTrashDialogOpen={isTrashDialogOpen} setTrashDialogOpen={setTrashDialogOpen} />
 
             {/* delete dialog */}
-            <Delete _id={_id} type="folder" isDeleteDialogOpen={isDeleteDialogOpen} setDeleteDialogOpen={setDeleteDialogOpen} />
+            <Delete id={id} type="folder" isDeleteDialogOpen={isDeleteDialogOpen} setDeleteDialogOpen={setDeleteDialogOpen} />
         </>
   )
 }

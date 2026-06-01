@@ -46,8 +46,8 @@ export default function Delete({ items }: { items: SelectedItemsProps }) {
 
     // handle delete
     const handleDelete = () => {
-        const fileIdArr = items.files.map((item) => ({ _id: item._id })); 
-        const folderIdArr = items.folders.map((item) => ({ _id: item._id })); 
+        const fileIdArr = items.files.map((item) => ({ id: item.id })); 
+        const folderIdArr = items.folders.map((item) => ({ id: item.id })); 
         mutate({ files: fileIdArr, folders: folderIdArr });
     }
 

@@ -13,7 +13,7 @@ import useCustomToast from "@/hooks/useCustomToast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 
-export default function MovetoTrash({ _id, type, isTrashDialogOpen, setTrashDialogOpen }: { _id: string; type: string; isTrashDialogOpen: boolean; setTrashDialogOpen: React.Dispatch<React.SetStateAction<boolean>>; }) {
+export default function MovetoTrash({ id, type, isTrashDialogOpen, setTrashDialogOpen }: { id: string; type: string; isTrashDialogOpen: boolean; setTrashDialogOpen: React.Dispatch<React.SetStateAction<boolean>>; }) {
     // toast
     const showToast = useCustomToast();
 
@@ -39,7 +39,7 @@ export default function MovetoTrash({ _id, type, isTrashDialogOpen, setTrashDial
 
     // handle move to trash
     const handleTrash = () => {
-        const param = type === "file" ? {files: [{ _id }], folders: null} : {files: null, folders: [{ _id }]}
+        const param = type === "file" ? {files: [{ id }], folders: null} : {files: null, folders: [{ id }]}
         mutate(param);
     }
 

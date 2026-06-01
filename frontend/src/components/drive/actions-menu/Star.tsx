@@ -4,7 +4,7 @@ import useCustomToast from '@/hooks/useCustomToast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FolderHeart } from 'lucide-react'
 
-export default function Star({ _id, type }: { _id: string, type: string }) {
+export default function Star({ id, type }: { id: string, type: string }) {
     // toast
     const showToast = useCustomToast();
 
@@ -26,7 +26,7 @@ export default function Star({ _id, type }: { _id: string, type: string }) {
 
     // handle star
     const handleStar = () => {
-        const param = type === "file" ? {files: [{ _id }], folders: null} : {files: null, folders: [{ _id }]}
+        const param = type === "file" ? {files: [{ id }], folders: null} : {files: null, folders: [{ id }]}
         mutate(param);
     }
 

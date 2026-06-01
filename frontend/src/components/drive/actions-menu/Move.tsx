@@ -17,7 +17,7 @@ import { ChevronLeft, ChevronRight, HardDrive, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 
-export default function Move({ _id, parent, type, isMoveDialogOpen, setMoveDialogOpen }: { _id: string; parent: string; type: string, isMoveDialogOpen: boolean; setMoveDialogOpen: React.Dispatch<React.SetStateAction<boolean>>; }) {
+export default function Move({ id, parent, type, isMoveDialogOpen, setMoveDialogOpen }: { id: string; parent: string; type: string, isMoveDialogOpen: boolean; setMoveDialogOpen: React.Dispatch<React.SetStateAction<boolean>>; }) {
     const [parentFolder, setParentFolder] = useState<string>(parent);
     const [selectedFolderId, setSelectedFolderId] = useState<string>("");
 
@@ -32,7 +32,7 @@ export default function Move({ _id, parent, type, isMoveDialogOpen, setMoveDialo
 
     const { data, isLoading } = useQuery({
         queryKey: ["folders", parentFolder],
-        queryFn: () => getFolders(type === "folder" ? _id : "", parentFolder || 'root'),
+        queryFn: () => getFolders(type === "folder" ? id : "", parentFolder || 'root'),
         enabled: isMoveDialogOpen
     });
 
@@ -62,7 +62,7 @@ export default function Move({ _id, parent, type, isMoveDialogOpen, setMoveDialo
 
     // handle move
     const handleMove = () => {
-        const param = type === "file" ? {files: [{ _id }], folders: null} : {files: null, folders: [{ _id }]}
+        const param = type === "file" ? {files: [{ id }], folders: null} : {files: null, folders: [{ id }]}
         mutate({ data: param, parent: selectedFolderId });
     }
 
@@ -115,14 +115,14 @@ export default function Move({ _id, parent, type, isMoveDialogOpen, setMoveDialo
                                 <div className="grid grid-cols-2 gap-2">
                                     {
                                         data?.folders?.map((folder: FolderProps) => (
-                                            <div key={folder._id} onClick={() => handleSelect(folder._id)} onDoubleClick={() => handleOpenFolder(folder._id)} 
+                                            <div key={folder.id} onClick={() => handleSelect(folder.id)} onDoubleClick={() => handleOpenFolder(folder.id)} 
                                             className={`flex items-center justify-between text-xs rounded-md 
-                                            ${selectedFolderId === folder._id ? "bg-bluedefault/25" : "dark:bg-white/5 dark:hover:bg-white/10 bg-blackdefault/5 hover:bg-blackdefault/10"}`}>
+                                            ${selectedFolderId === folder.id ? "bg-bluedefault/25" : "dark:bg-white/5 dark:hover:bg-white/10 bg-blackdefault/5 hover:bg-blackdefault/10"}`}>
                                                 <div className="flex items-center">
                                                     <img src={folderIcon} className="p-2 w-10 select-none pointer-events-none" />
                                                     <p className="select-none">{folder.name}</p>
                                                 </div>
-                                                <CustomButton onClick={() => handleOpenFolder(folder._id)} className="bg-transparent hover:bg-transparent p-0 h-8 w-8" type="button" variant="secondary" effect={false}>
+                                                <CustomButton onClick={() => handleOpenFolder(folder.id)} className="bg-transparent hover:bg-transparent p-0 h-8 w-8" type="button" variant="secondary" effect={false}>
                                                     <ChevronRight className="scale-75" />
                                                 </CustomButton>
                                             </div>
