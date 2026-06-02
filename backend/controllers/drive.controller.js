@@ -49,45 +49,56 @@ const uploadFile = async (req, res) => {
 
     const existingFilesMap = new Map(existingFileRows.map((f) => [f.original_name, f]));
 
-    await Promise.all(
-        files.map(async (f) => {
-            const existingFile = existingFilesMap.get(f.name);
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
 
-            const encryptedFileName = existingFile ? existingFile.name : `${uuid()}.enc`;
-            const encryptedFilePath = path.join(uploadPath, encryptedFileName);
+    try {
+        await Promise.all(
+            files.map(async (f) => {
+                const existingFile = existingFilesMap.get(f.name);
 
-            try {
-                await encryptFile(f.data, encryptedFilePath);
-            } catch (err) {
-                throw new CustomAPIError("Something went wrong during encryption", 500);
-            }
+                const encryptedFileName = existingFile ? existingFile.name : `${uuid()}.enc`;
+                const encryptedFilePath = path.join(uploadPath, encryptedFileName);
 
-            const mimeType = mime.lookup(f.name) || "application/octet-stream";
-            const type = mime.extension(mimeType) || "unknown";
+                try {
+                    await encryptFile(f.data, encryptedFilePath);
+                } catch (err) {
+                    throw new CustomAPIError("Something went wrong during encryption", 500);
+                }
 
-            if (existingFile) {
-                await db.execute(
-                    `UPDATE files 
-                     SET size = ?, mime_type = ?, type = ?, updated_at = NOW() 
-                     WHERE owner = ? AND (parent = ? OR (? IS NULL AND parent IS NULL)) AND original_name = ? AND is_deleted = false`,
-                    [f.size, mimeType, type, user.id, parent, parent, f.name],
-                );
-            } else {
-                await db.execute(
-                    `INSERT INTO files (owner, parent, original_name, name, size, mime_type, type) 
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                    [user.id, parent, f.name, encryptedFileName, f.size, mimeType, type],
-                );
-            }
-        }),
-    );
+                const mimeType = mime.lookup(f.name) || "application/octet-stream";
+                const type = mime.extension(mimeType) || "unknown";
 
-    await db.execute(`UPDATE users SET current_storage = ? WHERE id = ?`, [totalStorage, user.id]);
+                if (existingFile) {
+                    await conn.execute(
+                        `UPDATE files 
+                         SET size = ?, mime_type = ?, type = ?, updated_at = NOW() 
+                         WHERE owner = ? AND (parent = ? OR (? IS NULL AND parent IS NULL)) AND original_name = ? AND is_deleted = false`,
+                        [f.size, mimeType, type, user.id, parent, parent, f.name],
+                    );
+                } else {
+                    await conn.execute(
+                        `INSERT INTO files (owner, parent, original_name, name, size, mime_type, type) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                        [user.id, parent, f.name, encryptedFileName, f.size, mimeType, type],
+                    );
+                }
+            }),
+        );
 
-    res.status(201).json({
-        currentStorage: totalStorage,
-        message: "File uploaded successfully",
-    });
+        await conn.execute(`UPDATE users SET current_storage = ? WHERE id = ?`, [totalStorage, user.id]);
+
+        await conn.commit();
+        res.status(201).json({
+            currentStorage: totalStorage,
+            message: "File uploaded successfully",
+        });
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 };
 
 const getFilesAndFolders = async (req, res) => {
@@ -446,30 +457,42 @@ const star = async (req, res) => {
         throw new CustomAPIError("No files or folders found", 400);
     }
 
-    if (files && files.length > 0) {
-        const fileIds = files.map((f) => f.id);
-        const [rows] = await db.execute(
-            `UPDATE files SET is_starred = true WHERE id IN (${fileIds.map(() => "?").join(", ")}) AND owner = ?`,
-            [...fileIds, user.id],
-        );
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
 
-        if (rows.affectedRows !== fileIds.length) {
-            throw new CustomAPIError("One or more files not found", 404);
+    try {
+        if (files && files.length > 0) {
+            const fileIds = files.map((f) => f.id);
+            const [rows] = await conn.execute(
+                `UPDATE files SET is_starred = true WHERE id IN (${fileIds.map(() => "?").join(", ")}) AND owner = ?`,
+                [...fileIds, user.id],
+            );
+
+            if (rows.affectedRows !== fileIds.length) {
+                throw new CustomAPIError("One or more files not found", 404);
+            }
         }
-    }
-    if (folders && folders.length > 0) {
-        const folderIds = folders.map((f) => f.id);
-        const [rows] = await db.execute(
-            `UPDATE folders SET is_starred = true WHERE id IN (${folderIds.map(() => "?").join(", ")}) AND owner = ?`,
-            [...folderIds, user.id],
-        );
 
-        if (rows.affectedRows !== folderIds.length) {
-            throw new CustomAPIError("One or more folders not found", 404);
+        if (folders && folders.length > 0) {
+            const folderIds = folders.map((f) => f.id);
+            const [rows] = await conn.execute(
+                `UPDATE folders SET is_starred = true WHERE id IN (${folderIds.map(() => "?").join(", ")}) AND owner = ?`,
+                [...folderIds, user.id],
+            );
+
+            if (rows.affectedRows !== folderIds.length) {
+                throw new CustomAPIError("One or more folders not found", 404);
+            }
         }
-    }
 
-    res.status(200).json({ message: "Starred successfully" });
+        await conn.commit();
+        res.status(200).json({ message: "Starred successfully" });
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 };
 
 const unstar = async (req, res) => {
@@ -480,30 +503,42 @@ const unstar = async (req, res) => {
         throw new CustomAPIError("No files or folders found", 400);
     }
 
-    if (files && files.length > 0) {
-        const fileIds = files.map((f) => f.id);
-        const [rows] = await db.query(
-            `UPDATE files SET is_starred = false WHERE id IN (${fileIds.map(() => "?").join(", ")}) AND owner = ?`,
-            [...fileIds, user.id],
-        );
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
 
-        if (rows.affectedRows !== fileIds.length) {
-            throw new CustomAPIError("One or more files not found", 404);
+    try {
+        if (files && files.length > 0) {
+            const fileIds = files.map((f) => f.id);
+            const [rows] = await conn.execute(
+                `UPDATE files SET is_starred = false WHERE id IN (${fileIds.map(() => "?").join(", ")}) AND owner = ?`,
+                [...fileIds, user.id],
+            );
+
+            if (rows.affectedRows !== fileIds.length) {
+                throw new CustomAPIError("One or more files not found", 404);
+            }
         }
-    }
-    if (folders && folders.length > 0) {
-        const folderIds = folders.map((f) => f.id);
-        const [rows] = await db.query(
-            `UPDATE folders SET is_starred = false WHERE id IN (${folderIds.map(() => "?").join(", ")}) AND owner = ?`,
-            [...folderIds, user.id],
-        );
 
-        if (rows.affectedRows !== folderIds.length) {
-            throw new CustomAPIError("One or more folders not found", 404);
+        if (folders && folders.length > 0) {
+            const folderIds = folders.map((f) => f.id);
+            const [rows] = await conn.execute(
+                `UPDATE folders SET is_starred = false WHERE id IN (${folderIds.map(() => "?").join(", ")}) AND owner = ?`,
+                [...folderIds, user.id],
+            );
+
+            if (rows.affectedRows !== folderIds.length) {
+                throw new CustomAPIError("One or more folders not found", 404);
+            }
         }
-    }
 
-    res.status(200).json({ message: "Removed from starred" });
+        await conn.commit();
+        res.status(200).json({ message: "Removed from starred" });
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 };
 
 const getFolders = async (req, res) => {
@@ -548,60 +583,82 @@ const move = async (req, res) => {
         throw new CustomAPIError("No files or folders found");
     }
 
-    if (files?.length > 0) {
-        for (const f of files) {
-            const [[file]] = await db.execute(`SELECT * FROM files WHERE id = ? AND owner = ?`, [f.id, user.id]);
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
 
-            if (!file) {
-                throw new CustomAPIError("File not found", 404);
+    try {
+        if (files?.length > 0) {
+            for (const f of files) {
+                const [[file]] = await conn.execute(`SELECT * FROM files WHERE id = ? AND owner = ?`, [f.id, user.id]);
+
+                if (!file) {
+                    throw new CustomAPIError("File not found", 404);
+                }
+
+                if (file.parent === parent) {
+                    throw new CustomAPIError("This file is already in this directory", 400);
+                }
+
+                const ext = path.extname(file.original_name);
+                const base = path.basename(file.original_name, ext);
+
+                const [[{ count }]] = await conn.execute(
+                    `SELECT COUNT(*) as count FROM files 
+                    WHERE owner = ? AND (parent = ? OR (? IS NULL AND parent IS NULL)) AND is_deleted = FALSE
+                    AND original_name REGEXP ?`,
+                    [user.id, parent, parent, `^${base}( \\([0-9]+\\))?${ext}$`],
+                );
+
+                const newName = count === 0 ? file.original_name : `${base} (${count})${ext}`;
+
+                await conn.execute(`UPDATE files SET original_name = ?, parent = ? WHERE id = ?`, [
+                    newName,
+                    parent,
+                    file.id,
+                ]);
             }
-
-            if (file.parent === parent) {
-                throw new CustomAPIError("This file is already in this directory", 400);
-            }
-
-            const ext = path.extname(file.original_name);
-            const base = path.basename(file.original_name, ext);
-
-            const [[{ count }]] = await db.execute(
-                `SELECT COUNT(*) as count FROM files 
-                WHERE owner = ? AND (parent = ? OR (? IS NULL AND parent IS NULL)) AND is_deleted = FALSE
-                AND original_name REGEXP ?`,
-                [user.id, parent, parent, `^${base}( \\([0-9]+\\))?${ext}$`],
-            );
-
-            const newName = count === 0 ? file.original_name : `${base} (${count})${ext}`;
-
-            await db.execute(`UPDATE files SET original_name = ?, parent = ? WHERE id = ?`, [newName, parent, file.id]);
         }
-    }
 
-    if (folders?.length > 0) {
-        for (const f of folders) {
-            const [[folder]] = await db.execute(`SELECT * FROM folders WHERE id = ? AND owner = ?`, [f.id, user.id]);
+        if (folders?.length > 0) {
+            for (const f of folders) {
+                const [[folder]] = await conn.execute(`SELECT * FROM folders WHERE id = ? AND owner = ?`, [
+                    f.id,
+                    user.id,
+                ]);
 
-            if (!folder) {
-                throw new CustomAPIError("Folder not found", 404);
+                if (!folder) {
+                    throw new CustomAPIError("Folder not found", 404);
+                }
+
+                if (folder.parent === parent) {
+                    throw new CustomAPIError("This folder is already in this directory", 400);
+                }
+
+                const [[{ count }]] = await conn.execute(
+                    `SELECT COUNT(*) as count FROM folders 
+                    WHERE owner = ? AND (parent = ? OR (? IS NULL AND parent IS NULL)) AND is_deleted = FALSE
+                    AND name REGEXP ?`,
+                    [user.id, parent, parent, `^${folder.name}( \\([0-9]+\\))?$`],
+                );
+
+                const newName = count === 0 ? folder.name : `${folder.name} (${count})`;
+
+                await conn.execute(`UPDATE folders SET name = ?, parent = ? WHERE id = ?`, [
+                    newName,
+                    parent,
+                    folder.id,
+                ]);
             }
-
-            if (folder.parent === parent) {
-                throw new CustomAPIError("This folder is already in this directory", 400);
-            }
-
-            const [[{ count }]] = await db.execute(
-                `SELECT COUNT(*) as count FROM folders 
-                WHERE owner = ? AND (parent = ? OR (? IS NULL AND parent IS NULL)) AND is_deleted = FALSE
-                AND name REGEXP ?`,
-                [user.id, parent, parent, `^${folder.name}( \\([0-9]+\\))?$`],
-            );
-
-            const newName = count === 0 ? folder.name : `${folder.name} (${count})`;
-
-            await db.execute(`UPDATE folders SET name = ?, parent = ? WHERE id = ?`, [newName, parent, folder.id]);
         }
-    }
 
-    res.status(200).json({ message: "Moved successfully" });
+        await conn.commit();
+        res.status(200).json({ message: "Moved successfully" });
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 };
 
 const shareFile = async (req, res) => {
@@ -646,36 +703,48 @@ const moveToTrash = async (req, res) => {
         throw new CustomAPIError("No files or folders found");
     }
 
-    if (files && files.length > 0) {
-        for (const f of files) {
-            const [rows] = await db.execute(`SELECT id FROM files WHERE id = ? AND owner = ?`, [f.id, user.id]);
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
 
-            if (rows.length === 0) {
-                throw new CustomAPIError("File not found", 404);
+    try {
+        if (files && files.length > 0) {
+            for (const f of files) {
+                const [rows] = await conn.execute(`SELECT id FROM files WHERE id = ? AND owner = ?`, [f.id, user.id]);
+
+                if (rows.length === 0) {
+                    throw new CustomAPIError("File not found", 404);
+                }
+
+                await conn.execute(
+                    `UPDATE files SET is_deleted = true, deleted_at = NOW(), is_starred = false, public_key = NULL WHERE id = ?`,
+                    [f.id],
+                );
             }
-
-            await db.execute(
-                `UPDATE files SET is_deleted = true, deleted_at = NOW(), is_starred = false, public_key = NULL WHERE id = ?`,
-                [f.id],
-            );
         }
-    }
-    if (folders && folders.length > 0) {
-        for (const f of folders) {
-            const [rows] = await db.execute(`SELECT id FROM folders WHERE id = ? AND owner = ?`, [f.id, user.id]);
 
-            if (rows.length === 0) {
-                throw new CustomAPIError("Folder not found", 404);
+        if (folders && folders.length > 0) {
+            for (const f of folders) {
+                const [rows] = await conn.execute(`SELECT id FROM folders WHERE id = ? AND owner = ?`, [f.id, user.id]);
+
+                if (rows.length === 0) {
+                    throw new CustomAPIError("Folder not found", 404);
+                }
+
+                await conn.execute(
+                    `UPDATE folders SET is_deleted = true, deleted_at = NOW(), is_starred = false WHERE id = ?`,
+                    [f.id],
+                );
             }
-
-            await db.execute(
-                `UPDATE folders SET is_deleted = true, deleted_at = NOW(), is_starred = false WHERE id = ?`,
-                [f.id],
-            );
         }
-    }
 
-    res.status(200).json({ message: "Moved to trash" });
+        await conn.commit();
+        res.status(200).json({ message: "Moved to trash" });
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 };
 
 const restore = async (req, res) => {
@@ -686,9 +755,9 @@ const restore = async (req, res) => {
         throw new CustomAPIError("No files or folders found");
     }
 
-    async function resolveParent(parent) {
+    async function resolveParent(conn, parent) {
         if (!parent) return null;
-        const [ancestors] = await db.execute(
+        const [ancestors] = await conn.execute(
             `WITH RECURSIVE ancestors AS (
                 SELECT id, parent, is_deleted
                 FROM folders
@@ -708,11 +777,11 @@ const restore = async (req, res) => {
         return hasDeletedAncestor ? null : parent;
     }
 
-    async function resolveFileName(originalName, parent, owner) {
+    async function resolveFileName(conn, originalName, parent, owner) {
         const baseName = path.basename(originalName, path.extname(originalName));
         const ext = path.extname(originalName);
 
-        const [existing] = await db.execute(
+        const [existing] = await conn.execute(
             `SELECT original_name FROM files
             WHERE owner = ? AND (parent = ? OR (? IS NULL AND parent IS NULL)) AND is_deleted = false
             AND original_name REGEXP ?`,
@@ -727,8 +796,8 @@ const restore = async (req, res) => {
         return `${baseName} (${i})${ext}`;
     }
 
-    async function resolveFolderName(originalName, parent, owner) {
-        const [existing] = await db.execute(
+    async function resolveFolderName(conn, originalName, parent, owner) {
+        const [existing] = await conn.execute(
             `SELECT name FROM folders
             WHERE owner = ? AND (parent = ? OR (? IS NULL AND parent IS NULL)) AND is_deleted = false
             AND name REGEXP ?`,
@@ -743,53 +812,64 @@ const restore = async (req, res) => {
         return `${originalName} (${i})`;
     }
 
-    if (files && files.length > 0) {
-        for (const f of files) {
-            const [rows] = await db.execute(`SELECT id, parent, original_name FROM files WHERE id = ? AND owner = ?`, [
-                f.id,
-                user.id,
-            ]);
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
 
-            if (rows.length === 0) {
-                throw new CustomAPIError("File not found", 404);
+    try {
+        if (files && files.length > 0) {
+            for (const f of files) {
+                const [rows] = await conn.execute(
+                    `SELECT id, parent, original_name FROM files WHERE id = ? AND owner = ?`,
+                    [f.id, user.id],
+                );
+
+                if (rows.length === 0) {
+                    throw new CustomAPIError("File not found", 404);
+                }
+
+                const file = rows[0];
+
+                const resolvedParent = await resolveParent(conn, file.parent);
+                const resolvedName = await resolveFileName(conn, file.original_name, resolvedParent, user.id);
+
+                await conn.execute(
+                    `UPDATE files SET is_deleted = false, deleted_at = NULL, parent = ?, original_name = ? WHERE id = ?`,
+                    [resolvedParent, resolvedName, f.id],
+                );
             }
-
-            const file = rows[0];
-
-            const resolvedParent = await resolveParent(file.parent);
-            const resolvedName = await resolveFileName(file.original_name, resolvedParent, user.id);
-
-            await db.execute(
-                `UPDATE files SET is_deleted = false, deleted_at = NULL, parent = ?, original_name = ? WHERE id = ?`,
-                [resolvedParent, resolvedName, f.id],
-            );
         }
-    }
 
-    if (folders && folders.length > 0) {
-        for (const f of folders) {
-            const [rows] = await db.execute(`SELECT id, parent, name FROM folders WHERE id = ? AND owner = ?`, [
-                f.id,
-                user.id,
-            ]);
+        if (folders && folders.length > 0) {
+            for (const f of folders) {
+                const [rows] = await conn.execute(`SELECT id, parent, name FROM folders WHERE id = ? AND owner = ?`, [
+                    f.id,
+                    user.id,
+                ]);
 
-            if (rows.length === 0) {
-                throw new CustomAPIError("Folder not found", 404);
+                if (rows.length === 0) {
+                    throw new CustomAPIError("Folder not found", 404);
+                }
+
+                const folder = rows[0];
+
+                const resolvedParent = await resolveParent(conn, folder.parent);
+                const resolvedName = await resolveFolderName(conn, folder.name, resolvedParent, user.id);
+
+                await conn.execute(
+                    `UPDATE folders SET is_deleted = false, deleted_at = NULL, parent = ?, name = ? WHERE id = ?`,
+                    [resolvedParent, resolvedName, f.id],
+                );
             }
-
-            const folder = rows[0];
-
-            const resolvedParent = await resolveParent(folder.parent);
-            const resolvedName = await resolveFolderName(folder.name, resolvedParent, user.id);
-
-            await db.execute(
-                `UPDATE folders SET is_deleted = false, deleted_at = NULL, parent = ?, name = ? WHERE id = ?`,
-                [resolvedParent, resolvedName, f.id],
-            );
         }
-    }
 
-    res.status(200).json({ message: "Restored successfully" });
+        await conn.commit();
+        res.status(200).json({ message: "Restored successfully" });
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 };
 
 const deletePermanently = async (req, res) => {
@@ -802,101 +882,112 @@ const deletePermanently = async (req, res) => {
 
     const userFilesPath = path.join(__dirname, `../private/${user.id}/`);
 
-    if (files && files.length > 0) {
-        for (const f of files) {
-            const [rows] = await db.execute(
-                `SELECT id, name, size FROM files WHERE id = ? AND owner = ? AND is_deleted = true`,
-                [f.id, user.id],
-            );
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
 
-            if (rows.length === 0) {
-                throw new CustomAPIError("File not found", 404);
-            }
-
-            const file = rows[0];
-
-            try {
-                await fs.rm(path.join(userFilesPath, file.name), { recursive: true, force: true });
-            } catch (err) {
-                throw new CustomAPIError("Something went wrong", 500);
-            }
-
-            await db.execute(`DELETE FROM files WHERE id = ?`, [file.id]);
-            await db.execute(`UPDATE users SET current_storage = current_storage - ? WHERE id = ?`, [
-                file.size,
-                user.id,
-            ]);
-        }
-    }
-
-    if (folders && folders.length > 0) {
-        for (const f of folders) {
-            const [rows] = await db.execute(`SELECT id FROM folders WHERE id = ? AND owner = ? AND is_deleted = true`, [
-                f.id,
-                user.id,
-            ]);
-
-            if (rows.length === 0) {
-                throw new CustomAPIError("Folder not found", 404);
-            }
-
-            const [allFolderIdRows] = await db.execute(
-                `WITH RECURSIVE descendants AS (
-                    SELECT id FROM folders WHERE id = ?
-                    UNION ALL
-                    SELECT f.id FROM folders f
-                    INNER JOIN descendants d ON f.parent = d.id
-                )
-                SELECT id FROM descendants`,
-                [f.id],
-            );
-
-            const folderIdList = allFolderIdRows.map((r) => r.id);
-            const placeholders = folderIdList.map(() => "?").join(", ");
-
-            const [allFileRows] = await db.execute(
-                `SELECT id, name, size FROM files
-                 WHERE owner = ? AND parent IN (${placeholders})`,
-                [user.id, ...folderIdList],
-            );
-
-            await Promise.all(
-                allFileRows.map(async (f) => {
-                    try {
-                        await fs.rm(path.join(userFilesPath, f.name), { recursive: true, force: true });
-                    } catch (err) {
-                        throw new CustomAPIError("Something went wrong", 500);
-                    }
-                }),
-            );
-
-            const freedStorage = allFileRows.reduce((sum, f) => sum + f.size, 0);
-
-            if (allFileRows.length > 0) {
-                const filePlaceholders = allFileRows.map(() => "?").join(", ");
-                await db.execute(
-                    `DELETE FROM files WHERE id IN (${filePlaceholders})`,
-                    allFileRows.map((f) => f.id),
+    try {
+        if (files && files.length > 0) {
+            for (const f of files) {
+                const [rows] = await conn.execute(
+                    `SELECT id, name, size FROM files WHERE id = ? AND owner = ? AND is_deleted = true`,
+                    [f.id, user.id],
                 );
-            }
 
-            await db.execute(`DELETE FROM folders WHERE id IN (${placeholders})`, folderIdList);
+                if (rows.length === 0) {
+                    throw new CustomAPIError("File not found", 404);
+                }
 
-            if (freedStorage > 0) {
-                await db.execute(`UPDATE users SET current_storage = current_storage - ? WHERE id = ?`, [
-                    freedStorage,
+                const file = rows[0];
+
+                try {
+                    await fs.rm(path.join(userFilesPath, file.name), { recursive: true, force: true });
+                } catch (err) {
+                    throw new CustomAPIError("Something went wrong", 500);
+                }
+
+                await conn.execute(`DELETE FROM files WHERE id = ?`, [file.id]);
+                await conn.execute(`UPDATE users SET current_storage = current_storage - ? WHERE id = ?`, [
+                    file.size,
                     user.id,
                 ]);
             }
         }
+
+        if (folders && folders.length > 0) {
+            for (const f of folders) {
+                const [rows] = await conn.execute(
+                    `SELECT id FROM folders WHERE id = ? AND owner = ? AND is_deleted = true`,
+                    [f.id, user.id],
+                );
+
+                if (rows.length === 0) {
+                    throw new CustomAPIError("Folder not found", 404);
+                }
+
+                const [allFolderIdRows] = await conn.execute(
+                    `WITH RECURSIVE descendants AS (
+                        SELECT id FROM folders WHERE id = ?
+                        UNION ALL
+                        SELECT f.id FROM folders f
+                        INNER JOIN descendants d ON f.parent = d.id
+                    )
+                    SELECT id FROM descendants`,
+                    [f.id],
+                );
+
+                const folderIdList = allFolderIdRows.map((r) => r.id);
+                const placeholders = folderIdList.map(() => "?").join(", ");
+
+                const [allFileRows] = await conn.execute(
+                    `SELECT id, name, size FROM files
+                     WHERE owner = ? AND parent IN (${placeholders})`,
+                    [user.id, ...folderIdList],
+                );
+
+                await Promise.all(
+                    allFileRows.map(async (f) => {
+                        try {
+                            await fs.rm(path.join(userFilesPath, f.name), { recursive: true, force: true });
+                        } catch (err) {
+                            throw new CustomAPIError("Something went wrong", 500);
+                        }
+                    }),
+                );
+
+                const freedStorage = allFileRows.reduce((sum, f) => sum + f.size, 0);
+
+                if (allFileRows.length > 0) {
+                    const filePlaceholders = allFileRows.map(() => "?").join(", ");
+                    await conn.execute(
+                        `DELETE FROM files WHERE id IN (${filePlaceholders})`,
+                        allFileRows.map((f) => f.id),
+                    );
+                }
+
+                await conn.execute(`DELETE FROM folders WHERE id IN (${placeholders})`, folderIdList);
+
+                if (freedStorage > 0) {
+                    await conn.execute(`UPDATE users SET current_storage = current_storage - ? WHERE id = ?`, [
+                        freedStorage,
+                        user.id,
+                    ]);
+                }
+            }
+        }
+
+        const [[{ current_storage }]] = await conn.execute(`SELECT current_storage FROM users WHERE id = ?`, [user.id]);
+
+        await conn.commit();
+        res.status(200).json({
+            currentStorage: current_storage,
+            message: "Deleted successfully",
+        });
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
     }
-
-    const [[{ current_storage }]] = await db.execute(`SELECT current_storage FROM users WHERE id = ?`, [user.id]);
-
-    res.status(200).json({
-        currentStorage: current_storage,
-        message: "Deleted successfully",
-    });
 };
 
 const getFilePreviewPublic = async (req, res) => {

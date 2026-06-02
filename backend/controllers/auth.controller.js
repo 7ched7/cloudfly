@@ -18,11 +18,10 @@ const registerUser = async (req, res) => {
     }
 
     const salt = await bcrypt.genSalt(10);
-    hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     await db.execute(
-        `
-        INSERT INTO users (first_name, last_name, email, password) 
+        `INSERT INTO users (first_name, last_name, email, password) 
         VALUES (?, ?, ?, ?)`,
         [firstName, lastName, email, hashedPassword],
     );
@@ -82,25 +81,37 @@ const forgotPassword = async (req, res) => {
     }
 
     const [rows] = await db.execute("SELECT id, first_name, email FROM users WHERE email = ? LIMIT 1", [email]);
+
     if (rows.length > 0) {
-        user = rows[0];
+        const user = rows[0];
 
         const token = crypto.randomBytes(70).toString("hex");
         const tenMinutes = 1000 * 60 * 10;
         const expirationDate = new Date(Date.now() + tenMinutes);
 
-        await db.execute(
-            `
-            INSERT INTO reset_password_tokens (token, expiration_date, user) 
-            VALUES (?, ?, ?)`,
-            [token, expirationDate, user.id],
-        );
+        const conn = await db.getConnection();
+        await conn.beginTransaction();
 
-        await sendResetPasswordEmail({
-            name: user.first_name,
-            email: user.email,
-            token: token,
-        });
+        try {
+            await conn.execute(
+                `INSERT INTO reset_password_tokens (token, expiration_date, user) 
+                VALUES (?, ?, ?)`,
+                [token, expirationDate, user.id],
+            );
+
+            await sendResetPasswordEmail({
+                name: user.first_name,
+                email: user.email,
+                token: token,
+            });
+
+            await conn.commit();
+        } catch (err) {
+            await conn.rollback();
+            throw err;
+        } finally {
+            conn.release();
+        }
     }
 
     res.status(200).json({ message: "Please check your email for reset password link" });
@@ -117,18 +128,15 @@ const resetPassword = async (req, res) => {
         throw new CustomAPIError("Passwords are not same", 400);
     }
 
-    const [resetPasswordTokenRows] = await db.execute("SELECT * FROM reset_password_tokens WHERE token = ? LIMIT 1", [token]);
+    const [resetPasswordTokenRows] = await db.execute("SELECT * FROM reset_password_tokens WHERE token = ? LIMIT 1", [
+        token,
+    ]);
     const resetPasswordToken = resetPasswordTokenRows[0];
 
     if (!resetPasswordToken) {
         throw new CustomAPIError("Token is invalid", 400);
     }
 
-    if (password !== password_confirmation) {
-        throw new CustomAPIError("Passwords are not same", 400);
-    }
-
-    // check expiration date
     const currentDate = new Date();
     const expirationDate = new Date(resetPasswordToken.expiration_date);
     if (expirationDate.getTime() < currentDate.getTime()) {
@@ -144,11 +152,22 @@ const resetPassword = async (req, res) => {
     }
 
     const salt = await bcrypt.genSalt(10);
-    hashedPassword = await bcrypt.hash(password, salt);
-    await db.execute("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, user.id]);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    // remove token from db
-    await db.execute("DELETE FROM reset_password_tokens WHERE id = ?", [resetPasswordToken.id]);
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
+
+    try {
+        await conn.execute("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, user.id]);
+        await conn.execute("DELETE FROM reset_password_tokens WHERE id = ?", [resetPasswordToken.id]);
+
+        await conn.commit();
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 
     res.status(200).json({ message: "Your password has been successfully updated" });
 };
