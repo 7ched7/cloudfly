@@ -23,18 +23,27 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      - MONGO_URI=mongodb://mongo:27017/
+      - DB_HOST=mysql
+      - DB_USER=test_user
+      - DB_PASSWORD=secret
+      - DB_NAME=cloudfly_db
     depends_on:
-      - mongo
+      - mysql
     restart: unless-stopped
 
-  mongo:
-    image: mongo:6
+  mysql:
+    image: mysql:8.0
     ports:
-      - "27017:27017"
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=cloudfly_db
+      - MYSQL_USER=test_user
+      - MYSQL_PASSWORD=secret
     volumes:
-      - mongo-db:/data/db
+      - mysql_data:/var/lib/mysql
+      - ./backend/config/schema.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
 
 volumes:
-  mongo-db:
+  mysql_data:
