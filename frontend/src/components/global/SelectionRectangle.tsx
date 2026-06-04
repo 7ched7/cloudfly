@@ -69,7 +69,7 @@ export default function SelectionRectangle({
                         })
                         .map((file) => file.id);
                     selectedFiles = data?.files.filter(file => {
-                        return intersectingFileIds.some((id) => file._id === id);
+                        return intersectingFileIds.some((id) => String(file.id) === id);
                     })
 
                 }
@@ -86,7 +86,7 @@ export default function SelectionRectangle({
                         })
                         .map((folder) => folder.id);
                     selectedFolders = data?.folders.filter(folder => {
-                        return intersectingFolderIds.some((id) => folder._id === id);
+                        return intersectingFolderIds.some((id) => String(folder.id) === id);
                     })
                 }
                     

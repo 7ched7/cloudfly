@@ -13,7 +13,7 @@ import useCustomToast from "@/hooks/useCustomToast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 
-export default function Rename({ _id, parent, type, isRenameDialogOpen, setRenameDialogOpen }: { _id: string; parent: string; type: string, isRenameDialogOpen: boolean; setRenameDialogOpen: React.Dispatch<React.SetStateAction<boolean>>; }) {
+export default function Rename({ id, parent, type, isRenameDialogOpen, setRenameDialogOpen }: { id: string; parent: string; type: string, isRenameDialogOpen: boolean; setRenameDialogOpen: React.Dispatch<React.SetStateAction<boolean>>; }) {
     // toast
     const showToast = useCustomToast();
 
@@ -24,7 +24,7 @@ export default function Rename({ _id, parent, type, isRenameDialogOpen, setRenam
     const queryClient = useQueryClient();
 
     const { mutate, isPending } = useMutation({
-        mutationFn: (data: { _id: string, parent: string; name: string, type: string }) => rename(data),
+        mutationFn: (data: { id: string, parent: string; name: string, type: string }) => rename(data),
         onSuccess: (data) => {
             showToast(data.message);
             queryClient.invalidateQueries({ queryKey: ['drive']});
@@ -42,7 +42,7 @@ export default function Rename({ _id, parent, type, isRenameDialogOpen, setRenam
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         const data = Object.fromEntries(formData.entries()) as { name: string };
-        mutate({ _id, parent, name: data.name, type })
+        mutate({ id, parent, name: data.name, type })
     };
 
     return (

@@ -18,7 +18,7 @@ export default function Folder({
     return (
         <div className={`item folder flex justify-between items-center rounded-full group relative
             ${isSelected ? "bg-bluedefault/20 hover:bg-bluedefault/25" : "dark:bg-zinc-900 dark:hover:bg-zinc-800 bg-zinc-100 hover:bg-zinc-200"}`}
-            id={folder._id}
+            id={folder.id}
             >
 
             <div className="w-full h-full flex items-center overflow-hidden px-2" onDoubleClick={() => { if (handleChangeDirectory) handleChangeDirectory(folder) }} onClick={() => handleSelectItem(folder, "folder")}>

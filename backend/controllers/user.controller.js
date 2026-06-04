@@ -1,10 +1,10 @@
+const db = require("../config/db.js");
 const CustomAPIError = require("../errors/custom.error.js");
-const File = require("../models/file.model.js");
+const bcrypt = require("bcrypt");
 const path = require("path");
 const fs = require("fs").promises;
-const { v4: uuid } = require('uuid');
+const { v4: uuid } = require("uuid");
 
-// update image
 const updateImage = async (req, res) => {
     const user = req.user;
 
@@ -22,21 +22,44 @@ const updateImage = async (req, res) => {
         throw new CustomAPIError("Please upload an image smaller than 1 MB", 400);
     }
 
-    const profileImageName = uuid() + "-" + profileImage.name;
-    
-    const uploadPath = path.join(__dirname, `../public/images/${user._id}/`);
+    const uploadPath = path.join(__dirname, `../public/images/${user.id}/`);
     try {
         await fs.mkdir(uploadPath, { recursive: true });
     } catch (err) {
         throw new CustomAPIError("Something went wrong", 500);
     }
 
+    const profileImageName = uuid() + "-" + profileImage.name;
     const imagePath = path.join(uploadPath, profileImageName);
-    await profileImage.mv(imagePath);
 
-    const profileImageUrl = `${process.env.BASE_URL}/images/${user._id}/${profileImageName}`;
-    user.profileImage = profileImageUrl;
-    await user.save();
+    try {
+        await profileImage.mv(imagePath);
+    } catch (err) {
+        throw new CustomAPIError("Something went wrong", 500);
+    }
+
+    const profileImageUrl = `${process.env.BASE_URL}/images/${user.id}/${profileImageName}`;
+
+    try {
+        const [rows] = await db.execute("SELECT profile_image FROM users WHERE id = ?", [user.id]);
+        const oldImageUrl = rows[0]?.profile_image;
+
+        await db.execute("UPDATE users SET profile_image = ? WHERE id = ?", [profileImageUrl, user.id]);
+
+        if (oldImageUrl) {
+            const oldFileName = path.basename(oldImageUrl);
+            const oldImagePath = path.join(uploadPath, oldFileName);
+            try {
+                await fs.rm(oldImagePath, { force: true });
+            } catch (_) {
+            }
+        }
+    } catch (err) {
+        try {
+            await fs.rm(imagePath, { force: true });
+        } catch (_) {}
+        throw err;
+    }
 
     res.status(200).json({
         profileImage: profileImageUrl,
@@ -44,28 +67,27 @@ const updateImage = async (req, res) => {
     });
 };
 
-// remove image 
 const removeImage = async (req, res) => {
     const user = req.user;
-    
-    const imagePath = path.join(__dirname, `../public/images/${user._id}/`);
+
+    const imagePath = path.join(__dirname, `../public/images/${user.id}/`);
+
     try {
-        await fs.rm(imagePath, { recursive: true, force: true })
+        await fs.rm(imagePath, { recursive: true, force: true });
     } catch (err) {
         throw new CustomAPIError("Something went wrong", 500);
     }
 
     const profileImageUrl = `${process.env.BASE_URL}/images/default-profile-image.jpg`;
-    user.profileImage = profileImageUrl;
-    await user.save();
+
+    await db.execute("UPDATE users SET profile_image = ? WHERE id = ?", [profileImageUrl, user.id]);
 
     res.status(200).json({
         profileImage: profileImageUrl,
         message: "Your profile image has been removed",
     });
-}
+};
 
-// update name
 const updateName = async (req, res) => {
     const { firstName, lastName } = req.body;
     const user = req.user;
@@ -74,14 +96,11 @@ const updateName = async (req, res) => {
         throw new CustomAPIError("Please provide all required fields", 400);
     }
 
-    user.firstName = firstName;
-    user.lastName = lastName;
-    await user.save();
+    await db.execute("UPDATE users SET first_name = ?, last_name = ? WHERE id = ?", [firstName, lastName, user.id]);
 
     res.status(200).json({ firstName, lastName, message: "Your name has been successfully updated" });
 };
 
-// change password
 const changePassword = async (req, res) => {
     const { oldPassword, password, password_confirmation } = req.body;
     const user = req.user;
@@ -90,7 +109,9 @@ const changePassword = async (req, res) => {
         throw new CustomAPIError("Please provide all required fields", 400);
     }
 
-    const isPasswordCorrect = await user.comparePassword(oldPassword);
+    const [rows] = await db.execute("SELECT password FROM users WHERE id = ? LIMIT 1", [user.id]);
+
+    const isPasswordCorrect = await bcrypt.compare(oldPassword, rows[0].password);
     if (!isPasswordCorrect) {
         throw new CustomAPIError("Please enter your current password correctly", 400);
     }
@@ -99,17 +120,18 @@ const changePassword = async (req, res) => {
         throw new CustomAPIError("Passwords are not same", 400);
     }
 
-    user.password = password;
-    await user.save();
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    await db.execute("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, user.id]);
 
     res.status(200).json({ message: "Your password has been successfully updated" });
 };
 
-// delete user
 const deleteUser = async (req, res) => {
     const user = req.user;
 
-    const userFilesPath = path.join(__dirname, `../private/${user._id}`);
+    const userFilesPath = path.join(__dirname, `../private/${user.id}`);
     try {
         await fs.access(userFilesPath);
         try {
@@ -117,10 +139,10 @@ const deleteUser = async (req, res) => {
         } catch (err) {
             throw new CustomAPIError("Something went wrong", 500);
         }
-    } catch (error) {
-    }
+    } catch (error) {}
 
-    await user.deleteOne();
+    await db.execute("DELETE FROM users WHERE id = ?", [user.id]);
+
     res.clearCookie("token");
     res.status(200).json({ message: "Your account has been deleted" });
 };

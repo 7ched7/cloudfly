@@ -22,7 +22,7 @@ import Restore from "./Restore";
 import Delete from "./Delete";
 import { CustomButton } from "@/components/global/FormElements";
 
-export default function FileActionsMenu({ _id, parent, originalName, isStarred, isDeleted, publicKey }: FileProps) {
+export default function FileActionsMenu({ id, parent, originalName, isStarred, isDeleted, publicKey }: FileProps) {
     const [isDetailsSheetOpen, setDetailsSheetOpen] = useState(false);
     const [isRenameDialogOpen, setRenameDialogOpen] = useState(false);
     const [isMoveDialogOpen, setMoveDialogOpen] = useState(false);
@@ -72,14 +72,14 @@ export default function FileActionsMenu({ _id, parent, originalName, isStarred, 
                             isStarred ?
                             <>
                             <MenubarItem className="p-0">
-                                <Unstar _id={_id} type="file" />
+                                <Unstar id={id} type="file" />
                             </MenubarItem>
                             <MenubarSeparator />
                             </>
                             :
                             <>
                             <MenubarItem className="p-0">
-                                <Star _id={_id} type="file" />
+                                <Star id={id} type="file" />
                             </MenubarItem>
                             <MenubarSeparator />
                             </>
@@ -127,7 +127,7 @@ export default function FileActionsMenu({ _id, parent, originalName, isStarred, 
                         {
                             !isDeleted && <>
                             <MenubarItem className="p-0">
-                                <DownloadFile _id={_id} originalName={originalName} />
+                                <DownloadFile id={id} originalName={originalName} />
                             </MenubarItem>
                             <MenubarSeparator />
                             </>
@@ -145,7 +145,7 @@ export default function FileActionsMenu({ _id, parent, originalName, isStarred, 
                             :
                             <>
                             <MenubarItem className="p-0">
-                                <Restore _id={_id} type="file" />
+                                <Restore id={id} type="file" />
                             </MenubarItem>
                             <MenubarSeparator />
                             </>
@@ -167,25 +167,25 @@ export default function FileActionsMenu({ _id, parent, originalName, isStarred, 
             </Menubar>
 
             {/* details sheet */}
-            <Details _id={_id} originalName={originalName} isDetailsSheetOpen={isDetailsSheetOpen} setDetailsSheetOpen={setDetailsSheetOpen} />
+            <Details id={id} originalName={originalName} isDetailsSheetOpen={isDetailsSheetOpen} setDetailsSheetOpen={setDetailsSheetOpen} />
 
             {/* rename dialog */}
-            <Rename _id={_id} parent={parent} type="file" isRenameDialogOpen={isRenameDialogOpen} setRenameDialogOpen={setRenameDialogOpen} />
+            <Rename id={id} parent={parent} type="file" isRenameDialogOpen={isRenameDialogOpen} setRenameDialogOpen={setRenameDialogOpen} />
 
             {/* move dialog */}
-            <Move _id={_id} parent={parent} type="file" isMoveDialogOpen={isMoveDialogOpen} setMoveDialogOpen={setMoveDialogOpen} />
+            <Move id={id} parent={parent} type="file" isMoveDialogOpen={isMoveDialogOpen} setMoveDialogOpen={setMoveDialogOpen} />
 
             {/* share dialog */}
-            <ShareFile _id={_id} publicKey={publicKey} isShareDialogOpen={isShareDialogOpen} setShareDialogOpen={setShareDialogOpen} />
+            <ShareFile id={id} publicKey={publicKey} isShareDialogOpen={isShareDialogOpen} setShareDialogOpen={setShareDialogOpen} />
 
             {/* private dialog */}
-            <MakeFilePrivate _id={_id} isPrivateDialogOpen={isPrivateDialogOpen} setPrivateDialogOpen={setPrivateDialogOpen} />
+            <MakeFilePrivate id={id} isPrivateDialogOpen={isPrivateDialogOpen} setPrivateDialogOpen={setPrivateDialogOpen} />
 
             {/* trash dialog */}
-            <MovetoTrash _id={_id} type="file" isTrashDialogOpen={isTrashDialogOpen} setTrashDialogOpen={setTrashDialogOpen} />
+            <MovetoTrash id={id} type="file" isTrashDialogOpen={isTrashDialogOpen} setTrashDialogOpen={setTrashDialogOpen} />
 
             {/* delete dialog */}
-            <Delete _id={_id} type="file" isDeleteDialogOpen={isDeleteDialogOpen} setDeleteDialogOpen={setDeleteDialogOpen} />
+            <Delete id={id} type="file" isDeleteDialogOpen={isDeleteDialogOpen} setDeleteDialogOpen={setDeleteDialogOpen} />
         </>
   )
 }

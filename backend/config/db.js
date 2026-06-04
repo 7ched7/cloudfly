@@ -1,9 +1,13 @@
-const db = require("mongoose");
+const mysql = require("mysql2/promise");
 
-module.exports = connectToDB = (url) => {
-    return db
-        .connect(url)
-        .then(() => console.log("MongoDB Connected"))
-        .catch((e) => console.log(e));
-};
+const pool = mysql.createPool({
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "",
+    database: process.env.DB_NAME || "cloudfly_db",
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
 
+module.exports = pool;

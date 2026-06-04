@@ -13,7 +13,7 @@ import useCustomToast from "@/hooks/useCustomToast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-export default function ShareFile({ _id, publicKey, isShareDialogOpen, setShareDialogOpen }: { _id: string; publicKey: string | null; isShareDialogOpen: boolean; setShareDialogOpen: React.Dispatch<React.SetStateAction<boolean>>; }) {
+export default function ShareFile({ id, publicKey, isShareDialogOpen, setShareDialogOpen }: { id: string; publicKey: string | null; isShareDialogOpen: boolean; setShareDialogOpen: React.Dispatch<React.SetStateAction<boolean>>; }) {
     const [isLoading, setLoading] = useState(false);
     const [isCopied, setCopied] = useState(false);
 
@@ -24,7 +24,7 @@ export default function ShareFile({ _id, publicKey, isShareDialogOpen, setShareD
     const queryClient = useQueryClient();
 
     const { mutate, data } = useMutation({
-        mutationFn: (data: { _id: string }) => shareFile(data),
+        mutationFn: (id: string) => shareFile(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['drive']} )
                 .finally(() => {
@@ -42,7 +42,7 @@ export default function ShareFile({ _id, publicKey, isShareDialogOpen, setShareD
     // handle share 
     const handleShare = () => {
         setLoading(true);
-        mutate({ _id });
+        mutate(id);
     }
 
     // handle copy link

@@ -15,7 +15,7 @@ import { setCurrentStorage } from "@/store/user/userSlice";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
 
-export default function Delete({ _id, type, isDeleteDialogOpen, setDeleteDialogOpen }: { _id: string; type: string; isDeleteDialogOpen: boolean; setDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>; }) {
+export default function Delete({ id, type, isDeleteDialogOpen, setDeleteDialogOpen }: { id: string; type: string; isDeleteDialogOpen: boolean; setDeleteDialogOpen: React.Dispatch<React.SetStateAction<boolean>>; }) {
     // toast
     const showToast = useCustomToast();
 
@@ -43,7 +43,7 @@ export default function Delete({ _id, type, isDeleteDialogOpen, setDeleteDialogO
 
     // handle delete
     const handleDelete = () => {
-        const param = type === "file" ? {files: [{ _id }], folders: null} : {files: null, folders: [{ _id }]}
+        const param = type === "file" ? {files: [{ id }], folders: null} : {files: null, folders: [{ id }]}
         mutate(param);
     }
 

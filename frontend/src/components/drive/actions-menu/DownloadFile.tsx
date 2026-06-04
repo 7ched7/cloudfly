@@ -3,14 +3,14 @@ import customAxios from "@/config/axios";
 import useCustomToast from "@/hooks/useCustomToast";
 import { CustomButton } from "@/components/global/FormElements";
 
-export default function DownloadFile({ _id, originalName }: { _id: string; originalName: string; }) {
+export default function DownloadFile({ id, originalName }: { id: string; originalName: string; }) {
     // toast
     const showToast = useCustomToast();
 
     // handle download
     const handleDownload = async () => {
         try {
-            const res = await customAxios.get(`/api/drive/download/${_id}`, {
+            const res = await customAxios.get(`/api/drive/download/${id}`, {
                 responseType: "arraybuffer",
             });
             const blob = new Blob([res.data], { type: res.headers['content-type'] });

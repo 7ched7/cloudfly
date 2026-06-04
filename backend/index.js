@@ -2,11 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const app = express();
 const path = require('path');
-const connectToDB = require("./config/db.js");
-require("express-async-errors");
 const cookieParser = require('cookie-parser')
 const morgan = require("morgan");
-const mongoSanitize = require("express-mongo-sanitize");
 const helmet = require("helmet");
 const cors = require("cors");
 const compression = require("compression");
@@ -26,7 +23,6 @@ const PORT = process.env.PORT || 5000;
 if (process.env.NODE_ENV !== "production") {
     app.use(morgan("dev"));
 }
-app.use(mongoSanitize());
 app.use(helmet());
 app.use(cors({
     origin: process.env.FRONTEND_URL,
@@ -51,13 +47,5 @@ app.use("/api/drive", driveRoute);
 // error handling
 app.use(errorHandlerMiddleware);
 
-// connect db & start server
-const start = async () => {
-    try {
-        await connectToDB(process.env.MONGO_URI);
-        app.listen(PORT, console.log(`Server is listening on port ${PORT}`));
-    } catch (e) {
-        console.log(e);
-    }
-};
-start();
+// start server
+app.listen(PORT, console.log(`Server is listening on port ${PORT}`));

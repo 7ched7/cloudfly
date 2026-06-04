@@ -4,7 +4,7 @@ import useCustomToast from "@/hooks/useCustomToast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { RotateCcw } from "lucide-react";
 
-export default function Restore({ _id, type }: { _id: string, type: string }) {
+export default function Restore({ id, type }: { id: string, type: string }) {
     // toast
     const showToast = useCustomToast();
 
@@ -27,7 +27,7 @@ export default function Restore({ _id, type }: { _id: string, type: string }) {
 
     // handle restore
     const handleRestore = () => {
-        const param = type === "file" ? {files: [{ _id }], folders: null} : {files: null, folders: [{ _id }]}
+        const param = type === "file" ? {files: [{ id }], folders: null} : {files: null, folders: [{ id }]}
         mutate(param);
     }
 

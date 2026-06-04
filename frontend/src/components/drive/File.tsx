@@ -16,7 +16,7 @@ export default function File({
     return (
         <div className={`item file w-full h-48 flex flex-col items-start border rounded-md group overflow-hidden relative 
             ${isSelected ? "bg-bluedefault/20 hover:bg-bluedefault/25" : "hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}
-            id={file._id}
+            id={file.id}
             >
 
             <div onClick={() => handleSelectItem && handleSelectItem(file, "file")} className="w-full h-full p-2">

@@ -1,17 +1,12 @@
 import customAxios from "@/config/axios";
 
 export interface FilesAndFoldersReqBody {
-    files: { _id: string }[] | null;
-    folders: { _id: string }[] | null;
+    files: { id: string }[] | null;
+    folders: { id: string }[] | null;
 }
 
 export const getFilesAndFolders = async (parent: string) => {
     const res = await customAxios.get(`/api/drive/get/${parent}`);
-    return res.data;
-}
-
-export const getLatestFiles = async () => {
-    const res = await customAxios.get("/api/drive/get-latest");
     return res.data;
 }
 
@@ -20,8 +15,8 @@ export const searchFilesAndFolders = async (query: string) => {
     return res.data;
 }
 
-export const getStarredFilesAndFolders = async (parent: string) => {
-    const res = await customAxios.get(`/api/drive/get-starred/${parent}`);
+export const getStarredFilesAndFolders = async () => {
+    const res = await customAxios.get("/api/drive/get-starred");
     return res.data;
 }
 
@@ -30,8 +25,8 @@ export const getTrashedFilesAndFolders = async () => {
     return res.data;
 }
 
-export const getFileDetails = async (_id: string) => {
-    const res = await customAxios.get(`/api/drive/get-file/${_id}`);
+export const getFileDetails = async (id: string) => {
+    const res = await customAxios.get(`/api/drive/get-file/${id}`);
     return res.data;
 }
 
@@ -40,7 +35,7 @@ export const createFolder = async (data: { name: string, parent: string }) => {
     return res.data;
 }
 
-export const rename = async (data: { _id: string, parent: string, name: string, type: string }) => {
+export const rename = async (data: { id: string, parent: string, name: string, type: string }) => {
     const res = await customAxios.put("/api/drive/rename", data);
     return res.data;
 }
@@ -55,8 +50,8 @@ export const unstar = async (data: FilesAndFoldersReqBody) => {
     return res.data;
 }
 
-export const getFolders = async (_id: string, parent: string) => {
-    const query = _id ? `?folderId=${_id}` : "";
+export const getFolders = async (id: string, parent: string) => {
+    const query = id ? `?folderId=${id}` : "";
     const res = await customAxios.get(`/api/drive/get-folders/${parent}${query}`);
     return res.data;
 }
@@ -66,13 +61,13 @@ export const move = async (data: { data: FilesAndFoldersReqBody, parent: string 
     return res.data;
 }
 
-export const shareFile = async (data: { _id: string }) => {
-    const res = await customAxios.put("/api/drive/share-file", data);
+export const shareFile = async (id: string) => {
+    const res = await customAxios.put(`/api/drive/share-file/${id}`);
     return res.data;
 }
 
-export const makeFilePrivate = async (data: { _id: string }) => {
-    const res = await customAxios.put("/api/drive/make-file-private", data);
+export const makeFilePrivate = async (id: string) => {
+    const res = await customAxios.put(`/api/drive/make-file-private/${id}`);
     return res.data;
 }
 

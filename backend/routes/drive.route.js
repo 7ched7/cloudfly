@@ -6,7 +6,6 @@ const { authenticateUser } = require("../middlewares/authentication.js");
 const {
     uploadFile,
     getFilesAndFolders,
-    getLatestFiles,
     searchFilesAndFolders,
     getStarredFilesAndFolders,
     getTrashedFilesAndFolders,
@@ -30,9 +29,8 @@ const {
 
 router.post("/upload", authenticateUser, fileUpload(), uploadFile);
 router.get("/get/:id", authenticateUser, getFilesAndFolders);
-router.get("/get-latest", authenticateUser, getLatestFiles);
 router.get("/search", authenticateUser, searchFilesAndFolders);
-router.get("/get-starred/:id", authenticateUser, getStarredFilesAndFolders);
+router.get("/get-starred", authenticateUser, getStarredFilesAndFolders);
 router.get("/get-trashed", authenticateUser, getTrashedFilesAndFolders);
 router.get("/get-file/:id", authenticateUser, getFileDetails);
 router.get("/download/:id", authenticateUser, downloadFile);
@@ -42,8 +40,8 @@ router.put("/star", authenticateUser, star);
 router.put("/unstar", authenticateUser, unstar);
 router.get("/get-folders/:id", authenticateUser, getFolders);
 router.put("/move", authenticateUser, move);
-router.put("/share-file", authenticateUser, shareFile);
-router.put("/make-file-private", authenticateUser, makeFilePrivate);
+router.put("/share-file/:id", authenticateUser, shareFile);
+router.put("/make-file-private/:id", authenticateUser, makeFilePrivate);
 router.put("/move-to-trash", authenticateUser, moveToTrash);
 router.put("/restore", authenticateUser, restore);
 router.delete("/delete", authenticateUser, deletePermanently);
