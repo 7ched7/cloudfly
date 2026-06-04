@@ -3,9 +3,9 @@
 ![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
 ![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
 ![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB)
-![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
 
-This project is a file storage and sharing web application built with the MERN stack (MongoDB, Express, React, Node.js). 
+This project is a file storage and sharing web application built with React, Node.js, Express, and MySQL.
 
 <p align="center">
     <img src="./images/drive_view.jpg" width="600" alt="Cloudfly Drive Page"/>
@@ -18,7 +18,7 @@ Layer|Technology|Purpose
 Frontend|React + Typescript|Fast & type-safe UI
 Styling|Shadcn UI + Tailwind CSS|Modern & responsive design
 Backend|Node.js + Express.js|RESTful API 
-Database|MongoDB|Flexible data storage
+Database|MySQL|Relational data storage
 Auth|JWT + Google OAuth|Secure authentication
 Encryption|Crypto (AES-256)|File encryption
 
@@ -57,7 +57,7 @@ Encryption|Crypto (AES-256)|File encryption
 **Required** 
 - Node.js 
 - npm (or alternatives)
-- MongoDB
+- MySQL
 
 **Optional** 
 - Docker (if you prefer running the app with containers)
@@ -73,8 +73,8 @@ Encryption|Crypto (AES-256)|File encryption
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/7ched7/mern-cloudfly-app.git
-cd mern-cloudfly-app
+git clone https://github.com/7ched7/cloudfly.git
+cd cloudfly
 ```
 
 2. **Create environment variables**
@@ -92,8 +92,11 @@ PORT=5000
 BASE_URL=http://localhost:5000  
 FRONTEND_URL=http://localhost:5173  
 
-# mongodb connection
-MONGO_URI=your_mongo_database_url
+# mysql configuration
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=cloudfly_db
 
 # google oauth configuration
 GOOGLE_CLIENT_ID=your_google_client_id
@@ -116,18 +119,21 @@ EMAIL_SERVICE_PASSWORD=your_app_password_here
 ```
 
 3. **Start the application**
-- Manual
+- With Docker
 ```bash
+docker-compose up
+```
+
+- Or run manually
+```bash
+# set up the database
+mysql -u root < ./backend/config/schema.sql
+
 # terminal 1
 cd backend && npm install && npm run dev
 
 # terminal 2
 cd frontend && npm install && npm run dev
-```
-
-- with Docker
-```bash
-docker-compose up
 ```
 
 ## API Endpoints
@@ -195,9 +201,8 @@ Endpoint|Method|Description
 -|-|-
 /api/drive/upload|POST|Uploads and encrypts files 
 /api/drive/get/:id|GET|Retrieves files and folders
-/api/drive/get-latest|GET|Retrieves the most recently uploaded items
 /api/drive/search|GET|Searches files and folders
-/api/drive/get-starred/:id|GET|Retrieves starred items
+/api/drive/get-starred|GET|Retrieves starred items
 /api/drive/get-trashed|GET|Retrieves items in the trash
 /api/drive/get-file/:id|GET|Retrieves file details
 /api/drive/download/:id|GET|Downloads the file
@@ -207,8 +212,8 @@ Endpoint|Method|Description
 /api/drive/unstar|PUT|Removes star from the items
 /api/drive/get-folders/:id|GET|Retrieves subfolders of a specific folder
 /api/drive/move|PUT|Moves items to another folder
-/api/drive/share-file|PUT|Makes a file public and generates a shareable link
-/api/drive/make-file-private|PUT|Makes a file private
+/api/drive/share-file/:id|PUT|Makes a file public and generates a shareable link
+/api/drive/make-file-private/:id|PUT|Makes a file private
 /api/drive/move-to-trash|PUT|Moves items to trash
 /api/drive/restore|PUT|Restores items from the trash
 /api/drive/delete|DELETE|Permanently deletes items
@@ -229,7 +234,7 @@ POST /api/drive/create-folder
 ```json
 {
   "folder": {
-    "_id": "69747e1a2d07f7cf14361d93",
+    "id": "1",
     "parent": null,
     "name": "images",
     "isStarred": false
