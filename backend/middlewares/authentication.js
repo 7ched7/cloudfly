@@ -13,10 +13,9 @@ const authenticateUser = async (req, res, next) => {
         const { userId } = isTokenValid({ token });
 
         const [rows] = await db.execute(
-            `
-            SELECT id, first_name, last_name, email, profile_image, current_storage, max_storage FROM users 
+            `SELECT id, first_name, last_name, email, profile_image, current_storage, reserved_storage, max_storage FROM users 
             WHERE id = ? 
-            LIMIT 1 `,
+            LIMIT 1`,
             [userId],
         );
 

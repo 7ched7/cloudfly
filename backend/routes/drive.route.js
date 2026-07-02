@@ -1,10 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const trimRequest = require("trim-request");
-const fileUpload = require("express-fileupload");
 const { authenticateUser } = require("../middlewares/authentication.js");
 const {
-    uploadFile,
+    presignedUrls,
+    completeUpload,
     getFilesAndFolders,
     searchFilesAndFolders,
     getStarredFilesAndFolders,
@@ -27,15 +26,16 @@ const {
     downloadFilePublic,
 } = require("../controllers/drive.controller.js");
 
-router.post("/upload", authenticateUser, fileUpload(), uploadFile);
+router.post("/presigned-urls", authenticateUser, presignedUrls);
+router.put("/complete-upload", authenticateUser, completeUpload);
 router.get("/get/:id", authenticateUser, getFilesAndFolders);
 router.get("/search", authenticateUser, searchFilesAndFolders);
 router.get("/get-starred", authenticateUser, getStarredFilesAndFolders);
 router.get("/get-trashed", authenticateUser, getTrashedFilesAndFolders);
 router.get("/get-file/:id", authenticateUser, getFileDetails);
 router.get("/download/:id", authenticateUser, downloadFile);
-router.post("/create-folder", authenticateUser, trimRequest.all, createFolder);
-router.put("/rename", authenticateUser, trimRequest.all, rename);
+router.post("/create-folder", authenticateUser, createFolder);
+router.put("/rename", authenticateUser, rename);
 router.put("/star", authenticateUser, star);
 router.put("/unstar", authenticateUser, unstar);
 router.get("/get-folders/:id", authenticateUser, getFolders);

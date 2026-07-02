@@ -1,27 +1,45 @@
 const express = require("express");
 const router = express.Router();
+const CustomAPIError = require("../errors/custom.error.js");
 const { rateLimit } = require("express-rate-limit");
-const trimRequest = require("trim-request");
-const fileUpload = require("express-fileupload");
+const multer = require("multer");
+const path = require("path");
 const { authenticateUser } = require("../middlewares/authentication.js");
-const { updateImage, removeImage, updateName, changePassword, deleteUser } = require("../controllers/user.controller.js");
+const {
+    updateImage,
+    removeImage,
+    updateName,
+    changePassword,
+    deleteUser,
+} = require("../controllers/user.controller.js");
 
-// rate limiter
 const limiter = rateLimit({
-	windowMs: 1000 * 60 * 5,
-	limit: 10,
+    windowMs: 1000 * 60 * 5,
+    limit: 10,
     handler: (req, res) => {
         res.status(429).json({
             status: false,
             error: "Too many requests, please try again later",
         });
-    }
-})
+    },
+});
 
-router.put("/update-image", limiter, authenticateUser, fileUpload(), updateImage);
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 1 * 1024 * 1024 },
+    fileFilter: (_, file, cb) => {
+        const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+        if (!allowedTypes.includes(file.mimetype)) {
+            cb(new CustomAPIError("Please upload a valid image", 400));
+        }
+        return cb(null, true);
+    },
+});
+
+router.put("/update-image", limiter, authenticateUser, upload.single("profileImage"), updateImage);
 router.delete("/remove-image", limiter, authenticateUser, removeImage);
-router.put("/update-name", limiter, authenticateUser, trimRequest.all, updateName);
-router.put("/change-password", limiter, authenticateUser, trimRequest.all, changePassword);
+router.put("/update-name", limiter, authenticateUser, updateName);
+router.put("/change-password", limiter, authenticateUser, changePassword);
 router.delete("/delete", limiter, authenticateUser, deleteUser);
 
 module.exports = router;

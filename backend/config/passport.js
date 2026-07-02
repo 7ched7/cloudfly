@@ -17,7 +17,6 @@ passport.use(
             const lastName = profile.displayName.split(" ")[profile.displayName.split(" ").length - 1] || "";
             const email = profile.emails[0].value;
             const password = crypto.randomBytes(10).toString("hex");
-            const profileImage = profile.photos[0].value;
 
             if (!firstName || !lastName || !email) {
                 throw new CustomAPIError("Something went wrong", 400);
@@ -32,9 +31,9 @@ passport.use(
 
                 if (!user) {
                     const [result] = await db.execute(
-                        `INSERT INTO users (first_name, last_name, email, password, profile_image) 
-                        VALUES (?, ?, ?, ?, ?)`,
-                        [firstName, lastName, email, hashedPassword, profileImage]
+                        `INSERT INTO users (first_name, last_name, email, password) 
+                        VALUES (?, ?, ?, ?)`,
+                        [firstName, lastName, email, hashedPassword]
                     );
                     const [userRows] = await db.execute(`SELECT * FROM users WHERE id = ?`, [result.insertId]);
                     user = userRows[0];

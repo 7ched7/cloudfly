@@ -4,86 +4,58 @@ const bcrypt = require("bcrypt");
 const path = require("path");
 const fs = require("fs").promises;
 const { v4: uuid } = require("uuid");
+const s3Client = require("../config/s3Client.js");
+const {
+    PutObjectCommand,
+    paginateListObjectsV2,
+    DeleteObjectCommand,
+    DeleteObjectsCommand,
+} = require("@aws-sdk/client-s3");
 
 const updateImage = async (req, res) => {
     const user = req.user;
 
-    if (!req.files) {
+    if (!req.file) {
         throw new CustomAPIError("No file uploaded", 400);
     }
 
-    const profileImage = req.files.profileImage;
-    if (!profileImage.mimetype.startsWith("image")) {
-        throw new CustomAPIError("Please upload a valid image", 400);
-    }
+    const avatar = req.file;
+    const avatarName = `avatars/${user.id}`;
 
-    const maxSize = 1024 * 1024; // 1 mb
-    if (profileImage.size > maxSize) {
-        throw new CustomAPIError("Please upload an image smaller than 1 MB", 400);
-    }
+    const uploadParams = {
+        Bucket: process.env.MINIO_IMAGES_BUCKET,
+        Key: avatarName,
+        Body: avatar.buffer,
+        ContentType: avatar.mimetype,
+    };
 
-    const uploadPath = path.join(__dirname, `../public/images/${user.id}/`);
-    try {
-        await fs.mkdir(uploadPath, { recursive: true });
-    } catch (err) {
-        throw new CustomAPIError("Something went wrong", 500);
-    }
+    await s3Client.send(new PutObjectCommand(uploadParams));
+    await db.execute("UPDATE users SET profile_image = ? WHERE id = ?", [avatarName, user.id]);
 
-    const profileImageName = uuid() + "-" + profileImage.name;
-    const imagePath = path.join(uploadPath, profileImageName);
-
-    try {
-        await profileImage.mv(imagePath);
-    } catch (err) {
-        throw new CustomAPIError("Something went wrong", 500);
-    }
-
-    const profileImageUrl = `${process.env.BASE_URL}/images/${user.id}/${profileImageName}`;
-
-    try {
-        const [rows] = await db.execute("SELECT profile_image FROM users WHERE id = ?", [user.id]);
-        const oldImageUrl = rows[0]?.profile_image;
-
-        await db.execute("UPDATE users SET profile_image = ? WHERE id = ?", [profileImageUrl, user.id]);
-
-        if (oldImageUrl) {
-            const oldFileName = path.basename(oldImageUrl);
-            const oldImagePath = path.join(uploadPath, oldFileName);
-            try {
-                await fs.rm(oldImagePath, { force: true });
-            } catch (_) {
-            }
-        }
-    } catch (err) {
-        try {
-            await fs.rm(imagePath, { force: true });
-        } catch (_) {}
-        throw err;
-    }
+    const avatarUrl = `${process.env.MINIO_ENDPOINT}/${process.env.MINIO_IMAGES_BUCKET}/${avatarName}`;
 
     res.status(200).json({
-        profileImage: profileImageUrl,
+        profileImage: avatarUrl,
         message: "Your profile image has been successfully updated",
     });
 };
 
 const removeImage = async (req, res) => {
     const user = req.user;
+    const avatarName = user.profile_image;
 
-    const imagePath = path.join(__dirname, `../public/images/${user.id}/`);
-
-    try {
-        await fs.rm(imagePath, { recursive: true, force: true });
-    } catch (err) {
-        throw new CustomAPIError("Something went wrong", 500);
+    if (avatarName) {
+        const deleteParams = {
+            Bucket: process.env.MINIO_IMAGES_BUCKET,
+            Key: avatarName,
+        };
+        await s3Client.send(new DeleteObjectCommand(deleteParams));
     }
 
-    const profileImageUrl = `${process.env.BASE_URL}/images/default-profile-image.jpg`;
-
-    await db.execute("UPDATE users SET profile_image = ? WHERE id = ?", [profileImageUrl, user.id]);
+    await db.execute("UPDATE users SET profile_image = ? WHERE id = ?", [null, user.id]);
 
     res.status(200).json({
-        profileImage: profileImageUrl,
+        profileImage: null,
         message: "Your profile image has been removed",
     });
 };
@@ -109,9 +81,12 @@ const changePassword = async (req, res) => {
         throw new CustomAPIError("Please provide all required fields", 400);
     }
 
-    const [rows] = await db.execute("SELECT password FROM users WHERE id = ? LIMIT 1", [user.id]);
+    const [[userRow]] = await db.execute("SELECT password FROM users WHERE id = ? LIMIT 1", [user.id]);
+    if (!userRow) {
+        throw new CustomAPIError("User not found", 404);
+    }
 
-    const isPasswordCorrect = await bcrypt.compare(oldPassword, rows[0].password);
+    const isPasswordCorrect = await bcrypt.compare(oldPassword, userRow.password);
     if (!isPasswordCorrect) {
         throw new CustomAPIError("Please enter your current password correctly", 400);
     }
@@ -131,20 +106,56 @@ const changePassword = async (req, res) => {
 const deleteUser = async (req, res) => {
     const user = req.user;
 
-    const userFilesPath = path.join(__dirname, `../private/${user.id}`);
+    const conn = await db.getConnection();
+    await conn.beginTransaction();
+
     try {
-        await fs.access(userFilesPath);
-        try {
-            await fs.rm(userFilesPath, { recursive: true, force: true });
-        } catch (err) {
-            throw new CustomAPIError("Something went wrong", 500);
+        // delete files
+        const paginator = paginateListObjectsV2(
+            {
+                client: s3Client,
+            },
+            {
+                Bucket: process.env.MINIO_FILES_BUCKET,
+                Prefix: `uploads/${user.id}/`,
+            },
+        );
+
+        for await (const page of paginator) {
+            const objects = page.Contents;
+            if (!objects || objects.length === 0) continue;
+
+            await s3Client.send(
+                new DeleteObjectsCommand({
+                    Bucket: process.env.MINIO_FILES_BUCKET,
+                    Delete: { 
+                        Objects: objects.map((o) => ({ Key: o.Key })),
+                    },
+                }),
+            );
         }
-    } catch (error) {}
 
-    await db.execute("DELETE FROM users WHERE id = ?", [user.id]);
+        // delete avatar
+        if (user.profile_image) {
+            const deleteParams = {
+                Bucket: process.env.MINIO_IMAGES_BUCKET,
+                Key: user.profile_image,
+            };
 
-    res.clearCookie("token");
-    res.status(200).json({ message: "Your account has been deleted" });
+            await s3Client.send(new DeleteObjectCommand(deleteParams));
+        }
+
+        await conn.execute("DELETE FROM users WHERE id = ?", [user.id]);
+        await conn.commit();
+
+        res.clearCookie("token");
+        res.status(200).json({ message: "Your account has been deleted" });
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
 };
 
 module.exports = { updateImage, removeImage, updateName, changePassword, deleteUser };

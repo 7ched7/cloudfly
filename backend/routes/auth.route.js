@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const { rateLimit } = require("express-rate-limit");
-const trimRequest = require("trim-request");
 const passport = require("passport");
 const { authenticateUser } = require("../middlewares/authentication.js");
 const {
@@ -26,11 +25,11 @@ const limiter = rateLimit({
     }
 })
 
-router.post("/login", limiter, trimRequest.all, loginUser);
-router.post("/register", limiter, trimRequest.all, registerUser);
+router.post("/login", limiter, loginUser);
+router.post("/register", limiter, registerUser);
 router.post("/logout", limiter, authenticateUser, logout);
-router.post("/forgot-password", limiter, trimRequest.all, forgotPassword);
-router.post("/reset-password", limiter, trimRequest.all, resetPassword);
+router.post("/forgot-password", limiter, forgotPassword);
+router.post("/reset-password", limiter, resetPassword);
 router.post("/verify-token", authenticateUser, verifyToken);
 
 // google oauth

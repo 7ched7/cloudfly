@@ -12,8 +12,8 @@ const registerUser = async (req, res) => {
         throw new CustomAPIError("Please provide all required fields", 400);
     }
 
-    const [rows] = await db.execute("SELECT id FROM users WHERE email = ? LIMIT 1", [email]);
-    if (rows.length > 0) {
+    const [[existingRow]] = await db.execute("SELECT id FROM users WHERE email = ? LIMIT 1", [email]);
+    if (existingRow) {
         throw new CustomAPIError("This email address is already used", 400);
     }
 
@@ -36,27 +36,30 @@ const loginUser = async (req, res) => {
         throw new CustomAPIError("Please provide all required fields", 400);
     }
 
-    const [rows] = await db.execute("SELECT * FROM users WHERE email = ? LIMIT 1", [email]);
-    if (rows.length === 0) {
+    const [[userRow]] = await db.execute("SELECT * FROM users WHERE email = ? LIMIT 1", [email]);
+    if (!userRow) {
         throw new CustomAPIError("Invalid credentials", 404);
     }
 
-    const user = rows[0];
-
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+    const isPasswordCorrect = await bcrypt.compare(password, userRow.password);
     if (!isPasswordCorrect) {
         throw new CustomAPIError("Invalid credentials", 400);
     }
 
-    attachCookiesToResponse({ res, payload: { userId: user.id } });
+    attachCookiesToResponse({ res, payload: { userId: userRow.id } });
+
+    let avatarUrl = null;
+    if (userRow.profile_image) {
+        avatarUrl = `${process.env.MINIO_ENDPOINT}/${process.env.MINIO_IMAGES_BUCKET}/${userRow.profile_image}`;
+    }
 
     return res.status(200).json({
-        firstName: user.first_name,
-        lastName: user.last_name,
-        email: user.email,
-        profileImage: user.profile_image,
-        currentStorage: user.current_storage,
-        maxStorage: user.max_storage,
+        firstName: userRow.first_name,
+        lastName: userRow.last_name,
+        email: userRow.email,
+        profileImage: avatarUrl,
+        currentStorage: userRow.current_storage,
+        maxStorage: userRow.max_storage,
     });
 };
 
@@ -80,11 +83,9 @@ const forgotPassword = async (req, res) => {
         throw new CustomAPIError("Please provide email address", 400);
     }
 
-    const [rows] = await db.execute("SELECT id, first_name, email FROM users WHERE email = ? LIMIT 1", [email]);
+    const [[userRow]] = await db.execute("SELECT id, first_name, email FROM users WHERE email = ? LIMIT 1", [email]);
 
-    if (rows.length > 0) {
-        const user = rows[0];
-
+    if (userRow) {
         const token = crypto.randomBytes(70).toString("hex");
         const tenMinutes = 1000 * 60 * 10;
         const expirationDate = new Date(Date.now() + tenMinutes);
@@ -96,12 +97,12 @@ const forgotPassword = async (req, res) => {
             await conn.execute(
                 `INSERT INTO reset_password_tokens (token, expiration_date, user) 
                 VALUES (?, ?, ?)`,
-                [token, expirationDate, user.id],
+                [token, expirationDate, userRow.id],
             );
 
             await sendResetPasswordEmail({
-                name: user.first_name,
-                email: user.email,
+                name: userRow.first_name,
+                email: userRow.email,
                 token: token,
             });
 
@@ -128,23 +129,22 @@ const resetPassword = async (req, res) => {
         throw new CustomAPIError("Passwords are not same", 400);
     }
 
-    const [resetPasswordTokenRows] = await db.execute("SELECT * FROM reset_password_tokens WHERE token = ? LIMIT 1", [
+    const [[tokenRow]] = await db.execute("SELECT * FROM reset_password_tokens WHERE token = ? LIMIT 1", [
         token,
     ]);
-    const resetPasswordToken = resetPasswordTokenRows[0];
 
-    if (!resetPasswordToken) {
+    if (!tokenRow) {
         throw new CustomAPIError("Token is invalid", 400);
     }
 
     const currentDate = new Date();
-    const expirationDate = new Date(resetPasswordToken.expiration_date);
+    const expirationDate = new Date(tokenRow.expiration_date);
     if (expirationDate.getTime() < currentDate.getTime()) {
-        await db.execute("DELETE FROM reset_password_tokens WHERE id = ?", [resetPasswordToken.id]);
+        await db.execute("DELETE FROM reset_password_tokens WHERE id = ?", [tokenRow.id]);
         throw new CustomAPIError("Token has expired", 400);
     }
 
-    const [userRows] = await db.execute("SELECT * FROM users WHERE id = ? LIMIT 1", [resetPasswordToken.user]);
+    const [userRows] = await db.execute("SELECT * FROM users WHERE id = ? LIMIT 1", [tokenRow.user]);
     const user = userRows[0];
 
     if (!user) {
@@ -159,7 +159,7 @@ const resetPassword = async (req, res) => {
 
     try {
         await conn.execute("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, user.id]);
-        await conn.execute("DELETE FROM reset_password_tokens WHERE id = ?", [resetPasswordToken.id]);
+        await conn.execute("DELETE FROM reset_password_tokens WHERE id = ?", [tokenRow.id]);
 
         await conn.commit();
     } catch (err) {
@@ -174,11 +174,17 @@ const resetPassword = async (req, res) => {
 
 const verifyToken = async (req, res) => {
     const user = req.user;
+
+    let avatarUrl = null;
+    if (user.profile_image) {
+        avatarUrl = `${process.env.MINIO_ENDPOINT}/${process.env.MINIO_IMAGES_BUCKET}/${user.profile_image}`;
+    }
+
     return res.status(200).json({
         firstName: user.first_name,
         lastName: user.last_name,
         email: user.email,
-        profileImage: user.profile_image,
+        profileImage: avatarUrl,
         currentStorage: user.current_storage,
         maxStorage: user.max_storage,
     });

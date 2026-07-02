@@ -15,6 +15,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { Progress } from "../ui/progress";
 import LogoutButton from "../auth/LogoutButton";
@@ -33,7 +34,15 @@ export default function MobileSidebar({ user, isSidebarOpen }: { user: User | nu
                             <div className="w-full flex items-center justify-between">
                                 <div className="flex items-center gap-2">
 
-                                    <img src={user?.profileImage} alt={user?.firstName} className="rounded-md w-8 h-8"/>
+                                    <Avatar className="rounded-md w-8 h-8 select-none">
+                                        <AvatarImage
+                                            src={user?.profileImage}
+                                            alt={user?.firstName}
+                                        />
+                                        <AvatarFallback className="rounded-md">
+                                            {`${user?.firstName}`.slice(0, 1)}
+                                        </AvatarFallback>
+                                    </Avatar>
 
                                     <div className="text-start">
                                         <p className="font-semibold text-sm">
@@ -42,7 +51,9 @@ export default function MobileSidebar({ user, isSidebarOpen }: { user: User | nu
                                                 : `${user?.firstName} ${user?.lastName}`}
                                         </p>
                                         <p className="text-zinc-500 text-xs">
-                                            {user?.email}
+                                            {`${user?.email}`.length > 15
+                                                ? `${user?.email}`.substring(0,20) + "..."
+                                                : `${user?.email}`}
                                         </p>
                                     </div>
                                 </div>

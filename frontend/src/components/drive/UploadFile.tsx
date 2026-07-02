@@ -19,7 +19,7 @@ import { Upload } from "lucide-react";
 
 export default function UploadFile({ parent, fileNames, isLoading, droppedFiles }: { parent: string, fileNames: string[], isLoading: boolean, droppedFiles: FileList | null }) {
     const [sameFiles, setSameFiles] = useState<string[]>([]);
-    const [filesFormData, setFilesFormData] =  useState<FormData>(new FormData());
+    const [filesFormData, setFilesFormData] =  useState<File[]>([]);
     const [dialogOpen, setDialogOpen] = useState(false);
 
     // context
@@ -36,24 +36,46 @@ export default function UploadFile({ parent, fileNames, isLoading, droppedFiles 
     const queryClient = useQueryClient();
 
     const { mutate } = useMutation({
-        mutationFn: async (formData: FormData) =>  {
+        mutationFn: async (files: File[]) => {
             const id = uuid();
-            const files = formData.getAll("files") as File[];
-            
-            // add files to uploaded files array to show upload progress component
-            updateUploadedFiles({ id, files, progress: 0 });
             
             try {
-                const res = await customAxios.post("/api/drive/upload", formData, { onUploadProgress(progressEvent) {
-                    const { loaded, total } = progressEvent;
-                    if (total) {
-                        const progress = ((loaded / total) * 100).toFixed(0);
-                        // update uploaded file progress bar
-                        updateUploadedFilesProgress(id, parseInt(progress));
-                    }
-                },});
-                updateUploadStatus(id, true, res.data.message);       
-                return res.data;
+                const { data } = await customAxios.post("/api/drive/presigned-urls", {
+                    files: files.map(f => ({ name: f.name, type: f.type, size: f.size })),
+                    parent: parent,
+                });
+                
+                const { accepted } = data;
+                
+                for (const f of files) {
+                    const match = accepted.find((item: { name: string; }) => item.name === f.name);
+                    if (!match) continue;
+    
+                    // add files to uploaded files array to show upload progress component
+                    updateUploadedFiles({ id, files, progress: 0 });
+
+                    await customAxios.put(match.url, f, {
+                        headers: { "Content-Type": f.type },
+                        onUploadProgress(progressEvent) {
+                            const { loaded, total } = progressEvent;
+                            if (total) {
+                                const progress = ((loaded / total) * 100).toFixed(0);
+                                // update uploaded file progress bar
+                                updateUploadedFilesProgress(id, parseInt(progress));
+                            }
+                        },
+                    });
+                }
+                
+                if (accepted.length > 0) {
+                    const { data } = await customAxios.put("/api/drive/complete-upload", {
+                        data: accepted.map((f: { fileId: any; version: any; }) => ({ fileId: f.fileId, version: f.version })),
+                        parent: parent,
+                    });
+
+                    updateUploadStatus(id, true, data.message);       
+                    return data;
+                }
             } catch (error: any) {
                 updateUploadStatus(id, false, error.response.data.error);
             }
@@ -68,18 +90,16 @@ export default function UploadFile({ parent, fileNames, isLoading, droppedFiles 
     });
 
     // handle upload
-    const handleUpload = (formData: FormData) => {
-        mutate(formData);
+    const handleUpload = (files: File[]) => {
+        mutate(files);
         cancelBtnRef.current?.click();
     };
     
     // handle file input change
     const handleChange = (e?: React.ChangeEvent<HTMLInputElement>) => {
         e?.preventDefault();
-        
-        const files = e?.target.files as FileList || droppedFiles;
-        
-        const formData = new FormData();
+
+        const files = Array.from(e?.target.files as FileList || droppedFiles)    
 
         let filesWithConflicts: string[] = [];
         
@@ -87,17 +107,15 @@ export default function UploadFile({ parent, fileNames, isLoading, droppedFiles 
             if (fileNames.includes(file.name)) {
                 filesWithConflicts.push(file.name);
             }
-            formData.append("files", file);
         }
-        formData.append("parent", parent);        
         
         // if there is a conflict show dialog otherwise upload files immediately
         if (filesWithConflicts.length > 0) {
             setDialogOpen(true);
             setSameFiles(filesWithConflicts);
-            setFilesFormData(formData);
+            setFilesFormData(files);
         } else {
-            handleUpload(formData);
+            handleUpload(files);
         } 
     };
 
@@ -155,18 +173,20 @@ export default function UploadFile({ parent, fileNames, isLoading, droppedFiles 
                         <div className="grid grid-cols-3 gap-4 text-xs max-h-48 overflow-y-auto py-2">
                             {sameFiles?.map((name) => (
                                 <div key={name} className="dark:bg-zinc-800 bg-zinc-100 p-2 flex items-center gap-2 rounded-md">
-                                    {name}
+                                    {`${name}`.length > 15
+                                        ? `${name}`.substring(0,12) + "..."
+                                        : `${name}`}
                                 </div>
                             ))}
                         </div>
                         <p className="text-xs text-red-500 border-t pt-2">
                             {sameFiles?.length > 1 ? 
-                            "If you replace the files, the existing ones will be permanently deleted" : 
-                            "If you replace the file, the existing one will be permanently deleted"}
+                                "Uploading will automatically create a new version for these files. Older versions will be preserved." : 
+                                "Uploading will automatically create a new version for this file. The older version will be preserved."}
                         </p>
                     </DialogHeader>
                     <DialogFooter className="sm:justify-start gap-2">
-                        <CustomButton onClick={() => handleUpload(filesFormData)} type="button" >Replace</CustomButton>
+                        <CustomButton onClick={() => handleUpload(filesFormData)} type="button" >Keep Both</CustomButton>
                         <DialogClose asChild>
                             <CustomButton type="button" variant="secondary" ref={cancelBtnRef}>
                                 Cancel

@@ -10,16 +10,15 @@ export default function DownloadFile({ id, originalName }: { id: string; origina
     // handle download
     const handleDownload = async () => {
         try {
-            const res = await customAxios.get(`/api/drive/download/${id}`, {
-                responseType: "arraybuffer",
-            });
-            const blob = new Blob([res.data], { type: res.headers['content-type'] });
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
+            const res = await customAxios.get(`/api/drive/download/${id}`);
+            const url = res.data.url;
+            
+            const link = document.createElement("a");
             link.href= url;
-            link.download= originalName;
+            link.download = originalName;
+
             link.click();
-            window.URL.revokeObjectURL(url);
+            link.remove();
         } catch (err) {
             showToast("Something went wrong", false);
         }

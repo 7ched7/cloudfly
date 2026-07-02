@@ -88,24 +88,10 @@ export const deletePermanently = async (data: FilesAndFoldersReqBody) => {
 
 export const getFilePreviewPublic = async (key: string) => {
     try {
-        const res = await customAxios.get(`/api/drive/file-preview-public/${key}`, {
-            responseType: "arraybuffer",
-        });
-        return res;
+        const res = await customAxios.get(`/api/drive/file-preview-public/${key}`);
+        return res.data;
     } catch (error: any) {
-        const buffer = error?.response?.data;
-        if (buffer instanceof ArrayBuffer) {
-            const decoder = new TextDecoder("utf-8");
-            const message = decoder.decode(buffer);
-            try {
-                return JSON.parse(message);
-            } catch (error) {
-                return { error: "Something went wrong" };
-            }
-        } else {
-            return { error: "Something went wrong" };
-        }
-       
+        return error?.response?.data || { error: "Something went wrong" };
     }
 }
 

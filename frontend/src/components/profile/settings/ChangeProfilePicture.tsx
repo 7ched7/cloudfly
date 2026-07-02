@@ -14,9 +14,6 @@ export default function ChangeProfilePicture({ user }: ChangeProfilePictureProps
     const [profileImage, setProfileImage] = useState<File | null>(null);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-    const defaultProfileImage = `${import.meta.env.VITE_BACKEND_URL}/images/default-profile-image.jpg`;
-    const isDefaultProfileImage = user?.profileImage === defaultProfileImage;
-
     // redux 
     const dispatch = useAppDispatch();
 
@@ -30,8 +27,6 @@ export default function ChangeProfilePicture({ user }: ChangeProfilePictureProps
     // toast
     const showToast = useCustomToast();
 
-
-
     // handle file input change
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         e.preventDefault();
@@ -43,8 +38,6 @@ export default function ChangeProfilePicture({ user }: ChangeProfilePictureProps
         const preview = URL.createObjectURL(image);        
         setPreviewImage(preview);        
     };
-
-
 
     // handle profile image upload
     const handleUpload = (e: React.FormEvent<HTMLFormElement>) => {
@@ -65,8 +58,6 @@ export default function ChangeProfilePicture({ user }: ChangeProfilePictureProps
         }).finally(() => setUploadBtnLoading(false));
     };
 
-
-
     // handle remove image 
     const handleRemove = () => {
         setRemoveBtnLoading(true);
@@ -78,7 +69,6 @@ export default function ChangeProfilePicture({ user }: ChangeProfilePictureProps
             showToast(err, false);
         }).finally(() => setRemoveBtnLoading(false));
     };
-
 
     return (
         <>
@@ -122,7 +112,7 @@ export default function ChangeProfilePicture({ user }: ChangeProfilePictureProps
                 <CustomButton 
                     onClick={handleRemove} 
                     type="button" 
-                    disabled={isDefaultProfileImage ? true : removeBtnLoading ? true : false}
+                    disabled={!user?.profileImage ? true : removeBtnLoading ? true : false}
                     loading={removeBtnLoading}
                     variant="secondary" 
                 >

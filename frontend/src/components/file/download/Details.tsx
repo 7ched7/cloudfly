@@ -1,5 +1,6 @@
 import DownloadFile from './DownloadFile';
 import { FileDownloadPageDetailsLoading } from '@/components/global/Loading';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface DetailsProps {
     owner: {
@@ -19,7 +20,17 @@ export default function Details({ data, isLoading, error, keyProp }: { data: Det
                 !error ? 
                 <>
                     <div className="flex items-center gap-2 mb-4 p-2 border rounded-md">
-                        <img src={data.owner.profileImage} alt={data.owner.firstName} className="rounded-md w-8 h-8"/>
+
+                        <Avatar className="rounded-md w-8 h-8 select-none">
+                            <AvatarImage
+                                src={data.owner.profileImage}
+                                alt={data.owner.firstName}
+                            />
+                            <AvatarFallback className="rounded-md">
+                                {`${data.owner.firstName}`.slice(0, 1)}
+                            </AvatarFallback>
+                        </Avatar>
+
                         <div className="text-start">
                             <p className="font-semibold text-sm">
                                 {data.owner.firstName} {data.owner.lastName}
