@@ -6,7 +6,7 @@ const moment = require("moment");
 const mime = require("mime-types");
 const { v4: uuid } = require("uuid");
 const { bytesToSize } = require("../utils/helpers.js");
-const s3Client = require("../config/s3Client.js");
+const { s3InternalClient, s3PublicClient } = require("../config/s3Client.js");
 const { GetObjectCommand, PutObjectCommand, DeleteObjectsCommand, HeadObjectCommand } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
@@ -140,7 +140,7 @@ const presignedUrls = async (req, res) => {
                     Key: r.storageKey,
                 });
 
-                const url = await getSignedUrl(s3Client, command, { expiresIn: 30 });
+                const url = await getSignedUrl(s3PublicClient, command, { expiresIn: 30 });
 
                 return {
                     fileId: r.fileId,
@@ -186,7 +186,7 @@ const completeUpload = async (req, res) => {
 
         let head;
         try {
-            head = await s3Client.send(
+            head = await s3InternalClient.send(
                 new HeadObjectCommand({
                     Bucket: process.env.MINIO_FILES_BUCKET,
                     Key: versionRow.storage_key,
@@ -484,7 +484,7 @@ const downloadFile = async (req, res) => {
         ResponseContentDisposition: `attachment; filename="${fileVersion.original_name}"`,
     });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 30 });
+    const url = await getSignedUrl(s3PublicClient, command, { expiresIn: 30 });
     res.status(200).send({ url });
 };
 
@@ -1166,7 +1166,7 @@ const deletePermanently = async (req, res) => {
         await conn.commit();
 
         if (s3KeysToDelete.length > 0) {
-            await s3Client.send(
+            await s3InternalClient.send(
                 new DeleteObjectsCommand({
                     Bucket: process.env.MINIO_FILES_BUCKET,
                     Delete: {
@@ -1213,7 +1213,7 @@ const getFilePreviewPublic = async (req, res) => {
         ResponseContentDisposition: `inline; filename="${fileVersion.original_name}"`,
     });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 30 });
+    const url = await getSignedUrl(s3PublicClient, command, { expiresIn: 30 });
 
     res.status(200).send({ url, mimeType: fileVersion.mime_type });
 };
@@ -1235,7 +1235,7 @@ const getFileDetailsPublic = async (req, res) => {
 
     let avatarUrl = null;
     if (row.profile_image) {
-        avatarUrl = `${process.env.MINIO_ENDPOINT}/${process.env.MINIO_IMAGES_BUCKET}/${row.profile_image}`;
+        avatarUrl = `${process.env.MINIO_PUBLIC_ENDPOINT}/${process.env.MINIO_IMAGES_BUCKET}/${row.profile_image}`;
     }
 
     res.status(200).json({
@@ -1271,7 +1271,7 @@ const downloadFilePublic = async (req, res) => {
         ResponseContentDisposition: `attachment; filename="${fileVersion.original_name}"`,
     });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 30 });
+    const url = await getSignedUrl(s3PublicClient, command, { expiresIn: 30 });
 
     res.status(200).send({ url });
 };
@@ -1308,13 +1308,13 @@ async function resolveFileName(conn, name, parent, owner) {
 
     if (existingRows.length === 0) return name;
 
-    const existingNames = new Set(existingRows.map(r => r.original_name));
+    const existingNames = new Set(existingRows.map(r => r.original_name.toLowerCase()));
     let i = 0
     let newName;
 
     while (true) {
         newName = i === 0 ? name : `${base} (${i})${ext}`;
-        if (!existingNames.has(newName)) break;
+        if (!existingNames.has(newName.toLowerCase())) break;
         i++;
     }
     
@@ -1333,13 +1333,13 @@ async function resolveFolderName(conn, name, parent, owner) {
 
     if (existingRows.length === 0) return name;
 
-    const existingNames = new Set(existingRows.map(r => r.name));
+    const existingNames = new Set(existingRows.map(r => r.name.toLowerCase()));
     let i = 0
     let newName;
 
     while (true) {
         newName = i === 0 ? name : `${name} (${i})`;
-        if (!existingNames.has(newName)) break;
+        if (!existingNames.has(newName.toLowerCase())) break;
         i++;
     }
     

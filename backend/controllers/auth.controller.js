@@ -50,7 +50,7 @@ const loginUser = async (req, res) => {
 
     let avatarUrl = null;
     if (userRow.profile_image) {
-        avatarUrl = `${process.env.MINIO_ENDPOINT}/${process.env.MINIO_IMAGES_BUCKET}/${userRow.profile_image}`;
+        avatarUrl = `${process.env.MINIO_PUBLIC_ENDPOINT}/${process.env.MINIO_IMAGES_BUCKET}/${userRow.profile_image}`;
     }
 
     return res.status(200).json({
@@ -177,7 +177,7 @@ const verifyToken = async (req, res) => {
 
     let avatarUrl = null;
     if (user.profile_image) {
-        avatarUrl = `${process.env.MINIO_ENDPOINT}/${process.env.MINIO_IMAGES_BUCKET}/${user.profile_image}`;
+        avatarUrl = `${process.env.MINIO_PUBLIC_ENDPOINT}/${process.env.MINIO_IMAGES_BUCKET}/${user.profile_image}`;
     }
 
     return res.status(200).json({

@@ -4,7 +4,7 @@ const bcrypt = require("bcrypt");
 const path = require("path");
 const fs = require("fs").promises;
 const { v4: uuid } = require("uuid");
-const s3Client = require("../config/s3Client.js");
+const { s3InternalClient } = require("../config/s3Client.js");
 const {
     PutObjectCommand,
     paginateListObjectsV2,
@@ -29,10 +29,10 @@ const updateImage = async (req, res) => {
         ContentType: avatar.mimetype,
     };
 
-    await s3Client.send(new PutObjectCommand(uploadParams));
+    await s3InternalClient.send(new PutObjectCommand(uploadParams));
     await db.execute("UPDATE users SET profile_image = ? WHERE id = ?", [avatarName, user.id]);
 
-    const avatarUrl = `${process.env.MINIO_ENDPOINT}/${process.env.MINIO_IMAGES_BUCKET}/${avatarName}`;
+    const avatarUrl = `${process.env.MINIO_PUBLIC_ENDPOINT}/${process.env.MINIO_IMAGES_BUCKET}/${avatarName}`;
 
     res.status(200).json({
         profileImage: avatarUrl,
@@ -49,7 +49,7 @@ const removeImage = async (req, res) => {
             Bucket: process.env.MINIO_IMAGES_BUCKET,
             Key: avatarName,
         };
-        await s3Client.send(new DeleteObjectCommand(deleteParams));
+        await s3InternalClient.send(new DeleteObjectCommand(deleteParams));
     }
 
     await db.execute("UPDATE users SET profile_image = ? WHERE id = ?", [null, user.id]);
@@ -113,7 +113,7 @@ const deleteUser = async (req, res) => {
         // delete files
         const paginator = paginateListObjectsV2(
             {
-                client: s3Client,
+                client: s3InternalClient,
             },
             {
                 Bucket: process.env.MINIO_FILES_BUCKET,
@@ -125,7 +125,7 @@ const deleteUser = async (req, res) => {
             const objects = page.Contents;
             if (!objects || objects.length === 0) continue;
 
-            await s3Client.send(
+            await s3InternalClient.send(
                 new DeleteObjectsCommand({
                     Bucket: process.env.MINIO_FILES_BUCKET,
                     Delete: { 
@@ -142,7 +142,7 @@ const deleteUser = async (req, res) => {
                 Key: user.profile_image,
             };
 
-            await s3Client.send(new DeleteObjectCommand(deleteParams));
+            await s3InternalClient.send(new DeleteObjectCommand(deleteParams));
         }
 
         await conn.execute("DELETE FROM users WHERE id = ?", [user.id]);

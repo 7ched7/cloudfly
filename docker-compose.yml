@@ -8,7 +8,6 @@ services:
     env_file:
       - ./frontend/.env.local
     environment:
-      - VITE_BACKEND_URL=
       - BACKEND_URL=http://backend:5000
     depends_on:
       - backend
@@ -27,6 +26,13 @@ services:
       - DB_USER=test_user
       - DB_PASSWORD=secret
       - DB_NAME=cloudfly_db
+      
+      - MINIO_INTERNAL_ENDPOINT=http://minio:9000
+      - MINIO_PUBLIC_ENDPOINT=http://localhost:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_FILES_BUCKET=files
+      - MINIO_IMAGES_BUCKET=images
     depends_on:
       - mysql
     restart: unless-stopped
@@ -45,5 +51,34 @@ services:
       - ./backend/config/schema.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
 
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server --console-address ":9001" /data
+    restart: unless-stopped
+
+  minio-buckets:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    restart: on-failure
+    entrypoint: >
+      /bin/sh -c " 
+      sleep 5;     
+      /usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb local/files;
+      /usr/bin/mc mb local/images;
+      /usr/bin/mc anonymous set public local/images;
+      exit 0;
+      "
+
 volumes:
   mysql_data:
+  minio_data:
