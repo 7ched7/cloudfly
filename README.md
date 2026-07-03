@@ -1,26 +1,15 @@
 # Cloudfly
-![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
-![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
-![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
-![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB)
-![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+[![React](https://img.shields.io/badge/React-%2320232a.svg?logo=react&logoColor=%2361DAFB)](#)
+[![Node.js](https://img.shields.io/badge/Node.js-6DA55F?logo=node.js&logoColor=white)](#)
+[![Express.js](https://img.shields.io/badge/Express.js-%23404d59.svg?logo=express&logoColor=%2361DAFB)](#)
+[![MySQL](https://img.shields.io/badge/MySQL-4479A1?logo=mysql&logoColor=fff)](#)
+[![MinIO](https://img.shields.io/badge/MinIO-C72E49?logo=minio&logoColor=fff)](#)
 
-This project is a file storage and sharing web application built with React, Node.js, Express, and MySQL.
+This project is a file storage and sharing web application built with React, Node.js, Express.js, and MySQL.
 
 <p align="center">
     <img src="./images/drive_view.jpg" width="600" alt="Cloudfly Drive Page"/>
 </p>
-
-## Stack
-
-Layer|Technology|Purpose
--|-|-
-Frontend|React + Typescript|Fast & type-safe UI
-Styling|Shadcn UI + Tailwind CSS|Modern & responsive design
-Backend|Node.js + Express.js|RESTful API 
-Database|MySQL|Relational data storage
-Auth|JWT + Google OAuth|Secure authentication
-Encryption|Crypto (AES-256)|File encryption
 
 ## Features
 
@@ -28,12 +17,12 @@ Encryption|Crypto (AES-256)|File encryption
   - Email/Password login and registration
   - Google OAuth ([Passport.js](https://www.passportjs.org/))
   - Cookie-based JWT
-  - Forgot/Reset password (via [Nodemailer](https://nodemailer.com/))
+  - Forgot/Reset password ([Nodemailer](https://nodemailer.com/))
   - Profile editing
   - Account deletion
 
 - **File & Folder Management**
-  - Upload files with AES encryption
+  - File uploads via presigned URLs
   - Create folders and subfolders
   - Rename, move, star/unstar files and folders
   - File and folder search
@@ -51,23 +40,6 @@ Encryption|Crypto (AES-256)|File encryption
   - Upload status display
   - Multi select + Selection rectangle
   - Drag and drop
-
-## Prerequisites
-
-**Required** 
-- Node.js 
-- npm (or alternatives)
-- MySQL
-
-**Optional** 
-- Docker (if you prefer running the app with containers)
-
-**Accounts & Credentials**
-  - **Google Cloud Console account**: For Google OAuth authentication, you'll need:
-    - `Client ID`
-    - `Client Secret`
-  - **Gmail account**: For sending password reset emails, you'll need:
-    - `App Password`
 
 ## Installation
 
@@ -89,8 +61,8 @@ VITE_BACKEND_URL=http://localhost:5000
 NODE_ENV=development
 PORT=5000  
 
-BASE_URL=http://localhost:5000  
-FRONTEND_URL=http://localhost:5173  
+BASE_URL=http://localhost:5000
+FRONTEND_URL=http://localhost:5173
 
 # mysql configuration
 DB_HOST=localhost
@@ -98,20 +70,25 @@ DB_USER=root
 DB_PASSWORD=
 DB_NAME=cloudfly_db
 
+# minio configuration
+MINIO_INTERNAL_ENDPOINT=http://localhost:9000
+MINIO_PUBLIC_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_FILES_BUCKET=files
+MINIO_IMAGES_BUCKET=images
+
 # google oauth configuration
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_CALLBACK_URL=http://localhost:5000/api/auth/google/callback
 
 # jwt configuration
-JWT_SECRET=your_jwt_secret
-JWT_LIFETIME=your_jwt_expiration
+JWT_SECRET=secret
+JWT_LIFETIME=1h
 
 # session configuration
-SESSION_SECRET=your_session_secret
-
-# encryption configuration
-ENCRYPTION_KEY=your_encryption_key_for_file_encryption
+SESSION_SECRET=secret
 
 # nodemailer (Email service provider is Gmail)
 EMAIL_SERVICE_EMAIL=your_google_email_address
@@ -119,128 +96,127 @@ EMAIL_SERVICE_PASSWORD=your_app_password_here
 ```
 
 3. **Start the application**
-- With Docker
 ```bash
 docker-compose up
 ```
 
-- Or run manually
-```bash
-# set up the database
-mysql -u root < ./backend/config/schema.sql
-
-# terminal 1
-cd backend && npm install && npm run dev
-
-# terminal 2
-cd frontend && npm install && npm run dev
-```
-
 ## API Endpoints
 
-### Auth Routes
-Endpoint|Method|Description
--|-|-
-/api/auth/login|POST|Logs in a user
-/api/auth/register|POST|Creates a new account
-/api/auth/logout|POST|Logs out of the account
-/api/auth/forgot-password|POST|Sends a password reset link
-/api/auth/reset-password|POST|Sets a new password
-/api/auth/verify-token|POST|Verifies JWT token
+<details>
+  <summary>Auth Routes</summary>
 
-* Example Request
-```json
-POST /api/auth/login
-{
-  "email": "johndoe@mail.com",
-  "password": "123456"
-}
-```
+  Endpoint|Method|Description
+  -|-|-
+  /api/auth/login|POST|Logs in a user
+  /api/auth/register|POST|Creates a new account
+  /api/auth/logout|POST|Logs out of the account
+  /api/auth/forgot-password|POST|Sends a password reset link
+  /api/auth/reset-password|POST|Sets a new password
+  /api/auth/verify-token|POST|Verifies JWT token
 
-* Example Response
-```json
-{
-  "firstName": "john",
-  "lastName": "doe",
-  "email": "johndoe@mail.com",
-  "profileImage": "http://localhost:5000/images/default-profile-image.jpg",
-  "currentStorage": 0,
-  "maxStorage": 1073741824
-}
-```
+  * Example Request
+  ```json
+  POST /api/auth/login
+  {
+    "email": "johndoe@mail.com",
+    "password": "123456"
+  }
+  ```
 
-### User Routes
-Endpoint|Method|Description
--|-|-
-/api/user/update-image|PUT|Updates the profile image
-/api/user/remove-image|DELETE|Removes the profile image
-/api/user/update-name|PUT|Updates the user's name
-/api/user/change-password|PUT|Changes the current password
-/api/user/delete|DELETE|Permanently deletes the account
+  * Example Response
+  ```json
+  {
+    "firstName": "john",
+    "lastName": "doe",
+    "email": "johndoe@mail.com",
+    "profileImage": "http://localhost:9000/images/avatars/1",
+    "currentStorage": 0,
+    "maxStorage": 10737418240
+  }
+  ```
+</details>
 
-* Example Request
-```json
-PUT /api/user/update-name
-{ 
-  "firstName": "jane", 
-  "lastName": "doe" 
-}
-```
+<details>
+  <summary>User Routes</summary>
 
-* Example Response
-```json
-{
-  "firstName": "jane",
-  "lastName": "doe",
-  "message": "Your name has been successfully updated"
-}
-```
+  Endpoint|Method|Description
+  -|-|-
+  /api/user/update-image|PUT|Updates the profile image
+  /api/user/remove-image|DELETE|Removes the profile image
+  /api/user/update-name|PUT|Updates the user's name
+  /api/user/change-password|PUT|Changes the current password
+  /api/user/delete|DELETE|Permanently deletes the account
 
-### Drive Routes
-Endpoint|Method|Description
--|-|-
-/api/drive/upload|POST|Uploads and encrypts files 
-/api/drive/get/:id|GET|Retrieves files and folders
-/api/drive/search|GET|Searches files and folders
-/api/drive/get-starred|GET|Retrieves starred items
-/api/drive/get-trashed|GET|Retrieves items in the trash
-/api/drive/get-file/:id|GET|Retrieves file details
-/api/drive/download/:id|GET|Downloads the file
-/api/drive/create-folder|POST|Creates a new folder
-/api/drive/rename|PUT|Renames a file or folder
-/api/drive/star|PUT|Stars items
-/api/drive/unstar|PUT|Removes star from the items
-/api/drive/get-folders/:id|GET|Retrieves subfolders of a specific folder
-/api/drive/move|PUT|Moves items to another folder
-/api/drive/share-file/:id|PUT|Makes a file public and generates a shareable link
-/api/drive/make-file-private/:id|PUT|Makes a file private
-/api/drive/move-to-trash|PUT|Moves items to trash
-/api/drive/restore|PUT|Restores items from the trash
-/api/drive/delete|DELETE|Permanently deletes items
-/api/drive/file-preview-public/:key|GET|Public file preview
-/api/drive/get-file-public/:key|GET|Retrieves public file details
-/api/drive/download-public/:key|GET|Downloads a public file
+  * Example Request
+  ```json
+  PUT /api/user/update-name
+  { 
+    "firstName": "jane", 
+    "lastName": "doe" 
+  }
+  ```
 
-* Example Request
-```json
-POST /api/drive/create-folder
-{ 
-  "name": "images", 
-  "parent": "root" 
-}
-```
+  * Example Response
+  ```json
+  {
+    "firstName": "jane",
+    "lastName": "doe",
+    "message": "Your name has been successfully updated"
+  }
+  ```
+</details>
 
-* Example Response
-```json
-{
-  "folder": {
-    "id": "1",
-    "parent": null,
-    "name": "images",
-    "isStarred": false
-  },
-  "message": "Folder created successfully"
-}
-```
+<details>
+  <summary>Drive Routes</summary>
 
-[**LICENSE MIT**](LICENSE)
+  Endpoint|Method|Description
+  -|-|-
+  /api/drive//presigned-urls|POST|Creates presigned URLs
+  /api/drive//complete-upload|PUT|Finalizes upload process
+  /api/drive/get/:id|GET|Retrieves files and folders
+  /api/drive/search|GET|Searches files and folders
+  /api/drive/get-starred|GET|Retrieves starred items
+  /api/drive/get-trashed|GET|Retrieves items in the trash
+  /api/drive/get-file/:id|GET|Retrieves file details
+  /api/drive/download/:id|GET|Downloads the file
+  /api/drive/create-folder|POST|Creates a new folder
+  /api/drive/rename|PUT|Renames a file or folder
+  /api/drive/star|PUT|Stars items
+  /api/drive/unstar|PUT|Removes star from the items
+  /api/drive/get-folders/:id|GET|Retrieves subfolders of a specific folder
+  /api/drive/move|PUT|Moves items to another folder
+  /api/drive/share-file/:id|PUT|Makes a file public and generates a shareable link
+  /api/drive/make-file-private/:id|PUT|Makes a file private
+  /api/drive/move-to-trash|PUT|Moves items to trash
+  /api/drive/restore|PUT|Restores items from the trash
+  /api/drive/delete|DELETE|Permanently deletes items
+  /api/drive/file-preview-public/:key|GET|Public file preview
+  /api/drive/get-file-public/:key|GET|Retrieves public file details
+  /api/drive/download-public/:key|GET|Downloads a public file
+
+  * Example Request
+  ```json
+  POST /api/drive/create-folder
+  { 
+    "name": "images", 
+    "parent": "root" 
+  }
+  ```
+
+  * Example Response
+  ```json
+  {
+    "folder": {
+      "id": "1",
+      "parent": null,
+      "name": "images",
+      "isStarred": false
+    },
+    "message": "Folder created successfully"
+  }
+  ```
+</details>
+
+---
+
+This project is licensed under the [MIT License](LICENSE).
