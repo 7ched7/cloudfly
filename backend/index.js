@@ -7,7 +7,6 @@ const morgan = require("morgan");
 const helmet = require("helmet");
 const cors = require("cors");
 const compression = require("compression");
-const session = require("express-session");
 const passport = require("passport");
 require("./config/passport.js");
 const errorHandlerMiddleware = require("./middlewares/error.handler.js");
@@ -31,13 +30,7 @@ app.use(cors({
 app.use(compression());
 
 app.use(cookieParser())
-app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-}));
 app.use(passport.initialize());
-app.use(passport.session());
 
 // routes
 app.use("/api/auth", authRoute);

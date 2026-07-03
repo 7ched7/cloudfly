@@ -34,6 +34,6 @@ router.post("/verify-token", authenticateUser, verifyToken);
 
 // google oauth
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
-router.get("/google/callback", passport.authenticate("google", { failureRedirect: `${process.env.FRONTEND_URL}/auth/login` }), googleSign);
+router.get("/google/callback", passport.authenticate("google", { session: false, failureRedirect: `${process.env.FRONTEND_URL}/auth/login` }), googleSign);
 
 module.exports = router;

@@ -23,6 +23,7 @@ This project is a file storage and sharing web application built with React, Nod
 
 - **File & Folder Management**
   - File uploads via presigned URLs
+  - File versioning
   - Create folders and subfolders
   - Rename, move, star/unstar files and folders
   - File and folder search
@@ -87,12 +88,9 @@ GOOGLE_CALLBACK_URL=http://localhost:5000/api/auth/google/callback
 JWT_SECRET=secret
 JWT_LIFETIME=1h
 
-# session configuration
-SESSION_SECRET=secret
-
 # nodemailer (Email service provider is Gmail)
 EMAIL_SERVICE_EMAIL=your_google_email_address
-EMAIL_SERVICE_PASSWORD=your_app_password_here
+EMAIL_SERVICE_PASSWORD=your_app_password
 ```
 
 3. **Start the application**
@@ -171,8 +169,8 @@ docker-compose up
 
   Endpoint|Method|Description
   -|-|-
-  /api/drive//presigned-urls|POST|Creates presigned URLs
-  /api/drive//complete-upload|PUT|Finalizes upload process
+  /api/drive/presigned-urls|POST|Creates presigned URLs
+  /api/drive/complete-upload|PUT|Finalizes upload process
   /api/drive/get/:id|GET|Retrieves files and folders
   /api/drive/search|GET|Searches files and folders
   /api/drive/get-starred|GET|Retrieves starred items
